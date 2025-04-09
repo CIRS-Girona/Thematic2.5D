@@ -1,0 +1,39 @@
+directories:
+  source_dir: './'                   # Root directory for the project data.
+  tiles_dir: 'data/tiles'            # Directory containing the input tiled data (images, depths, masks).
+  dataset_dir: 'data/dataset'        # Directory where the processed dataset patches will be saved.
+  results_dir: 'data/results'        # Directory to save classification reports and inference output images.
+  models_dir: 'data/models'          # Directory to save trained model files.
+  features_dir: 'data/features'      # Directory to save extracted features.
+
+create_dataset:
+  enabled: true                # Set to `true` to enable dataset creation.
+  bg_per_img: 5000             # Maximum number of background patches to extract per input mosaic.
+  thread_count: 64             # Number of threads to use for parallel processing during dataset creation.
+  uxo_sample_rate: 0.001       # Fraction of UXO pixels to sample as centers for potential UXO patches.
+  uxo_threshold: 0.4           # Minimum fraction of UXO pixels required within a window for it to be labeled as a UXO patch.
+  invalid_threshold: 0.01      # Maximum fraction of invalid pixels (e.g., masked out areas) allowed in a patch; patches exceeding this are skipped.
+  window_size: 400             # Size (in pixels) of the square window extracted from the original mosaic around a sample point.
+  patch_size: 128              # Size (in pixels) to which the extracted window is resized to create the final patch.
+  angles: [0, 90, 180, 270]    # Angles (in degrees) to rotate UXO patches for data augmentation.
+
+train_model:
+  enabled: true                # Set to `true` to enable model training.
+  test_size: 0.1               # Fraction of the data to use for the test set.
+  n_components: 100            # Number of components for Nystroem kernel approximation.
+  dimension: '25'              # Specifies which data modality to use for training: '2' for 2D (image), '3' for 3D (depth), '25' for 2.5D (both).
+  use_saved_features: false    # If `true`, loads features from `features_dir`; if `false`, extracts features from the dataset in `dataset_dir`.
+  subset_size: 0               # If > 0, uses a random subset of this size for feature extraction/training (useful for quick tests).
+
+run_inference:
+  enabled: false                # Set to `true` to enable inference.
+  image_path: data/tiles/plot1/images/plot1_18_240424_t2_ortho_r03_c02.png  # Path to the input image for inference.
+  depth_path: data/tiles/plot1/depths/plot1_18_240424_t2_ortho_r03_c02.png  # Path to the input depth map for inference.
+  model_name: SVM_25D.pkl       # Filename of the trained model (located in `models_dir`) to use for inference.
+  region_size: 400              # Parameter for superpixel segmentation (average size of superpixels).
+  window_size: 400              # Size of the window extracted around superpixel centroids/subdivisions for feature extraction during inference.
+  patch_size: 128               # Size to which the extracted inference window is resized.
+  subdivide_axis: 3             # Number of subdivisions along each axis within the main window around a superpixel centroid. Used for neighbor polling.
+  threshold: 4                  # Minimum number of positive predictions within the subdivisions of a superpixel region required to classify the region as UXO.
+  dimension: '25'               # Specifies which features the loaded model expects. Must match the dimension the model was trained with.
+  output_file: 'inference.png'  # Filename for the output image saved in `results_dir`.
