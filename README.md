@@ -1,6 +1,6 @@
-# CIRS Baseline Model for Underwater Military Munitions (UWMM) Detection
+# Baseline Model for Underwater Military Munitions (UWMM) Detection
 
-This project implements a baseline model for the detection of Underwater Military Munitions (UWMM), replicating the methodology presented in the paper "Improved supervised classification of underwater military munitions using height features derived from optical imagery" by Gleason, Shihavuddin, et al. (2015). The implementation utilizes Python frameworks to process and analyze different data modalities, including 2D imagery, 3D depth data, and a combined 2.5D representation, to evaluate their effectiveness in identifying Unexploded Ordnance (UXO) in underwater environments.
+This project implements a baseline model for the detection of Underwater Military Munitions (UWMM), replicating the methodology presented in the paper "Improved supervised classification of underwater military munitions using height features derived from optical imagery" by Gleason et al. (2015). The implementation utilizes Python frameworks to process and analyze different data modalities, including 2D imagery, 3D depth data, and a combined 2.5D representation, to evaluate their effectiveness in identifying Unexploded Ordnance (UXO) in underwater environments.
 
 ## Purpose
 
