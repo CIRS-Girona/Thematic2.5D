@@ -25,6 +25,8 @@ This section outlines the steps required to use this project. Ensure you have th
 
 ### 1. Dataset Creation
 
+TODO: Change
+
 This step involves processing raw tiled data to generate training patches.
 
 **Input Data Format:**

@@ -1,6 +1,6 @@
 directories:
   source_dir: './'                   # Root directory for the project data.
-  tiles_dir: 'data/tiles'            # Directory containing the input tiled data (images, depths, masks).
+  input_dir: 'dataset'               # Directory containing the input tiled data (images, depths, masks).
   dataset_dir: 'data/dataset'        # Directory where the processed dataset patches will be saved.
   results_dir: 'data/results'        # Directory to save classification reports and inference output images.
   models_dir: 'data/models'          # Directory to save trained model files.
