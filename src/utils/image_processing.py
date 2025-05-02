@@ -3,12 +3,11 @@ from typing import Literal
 import cv2
 
 
-def color_correct(image: np.ndarray, clip_limit: float = 2.0, tile_grid_size: tuple[int, int] = (8, 8)) -> np.ndarray:
-    # Convert to YUV color space
-    yuv_image = cv2.cvtColor(image, cv2.COLOR_BGR2YUV)
+def contrast_enhancement(image: np.ndarray, clip_limit: float = 2.0, tile_grid_size: tuple[int, int] = (8, 8)) -> np.ndarray:
+    hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
     clahe = cv2.createCLAHE(clipLimit=clip_limit, tileGridSize=tile_grid_size)
-    yuv_image[:, :, 0] = clahe.apply(yuv_image[:, :, 0])  # The luma (Y channel) is the intensity of the image (gray scale)
-    corrected_image = cv2.cvtColor(yuv_image, cv2.COLOR_YUV2BGR)
+    hsv_image[:, :, 2] = clahe.apply(hsv_image[:, :, 2])  # The value channel is the intensity of the image (gray scale)
+    corrected_image = cv2.cvtColor(hsv_image, cv2.COLOR_YUV2BGR)
 
     return corrected_image
 
@@ -64,7 +63,7 @@ def process_images(images: list[np.ndarray], correct_color: bool = True, stretch
     
     for image in images:
         if correct_color:
-            image = color_correct(image, clip_limit=clip_limit, tile_grid_size=tile_grid_size)
+            image = contrast_enhancement(image, clip_limit=clip_limit, tile_grid_size=tile_grid_size)
 
         if stretch_contrast:
             image = contrast_stretch(image)

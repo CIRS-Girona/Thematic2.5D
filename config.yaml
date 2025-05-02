@@ -7,9 +7,9 @@ directories:
   features_dir: 'data/features'      # Directory to save extracted features.
 
 create_dataset:
-  enabled: true                # Set to `true` to enable dataset creation.
-  bg_per_img: 5000             # Maximum number of background patches to extract per input mosaic.
-  thread_count: 64             # Number of threads to use for parallel processing during dataset creation.
+  enabled: false                # Set to `true` to enable dataset creation.
+  bg_per_img: 20             # Maximum number of background patches to extract per input mosaic.
+  thread_count: 128             # Number of threads to use for parallel processing during dataset creation.
   uxo_sample_rate: 0.001       # Fraction of UXO pixels to sample as centers for potential UXO patches.
   uxo_threshold: 0.4           # Minimum fraction of UXO pixels required within a window for it to be labeled as a UXO patch.
   invalid_threshold: 0.01      # Maximum fraction of invalid pixels (e.g., masked out areas) allowed in a patch; patches exceeding this are skipped.
@@ -20,9 +20,9 @@ create_dataset:
 train_model:
   enabled: true                # Set to `true` to enable model training.
   test_size: 0.1               # Fraction of the data to use for the test set.
-  n_components: 100            # Number of components for Nystroem kernel approximation.
-  dimension: '25'              # Specifies which data modality to use for training: '2' for 2D (image), '3' for 3D (depth), '25' for 2.5D (both).
-  use_saved_features: false    # If `true`, loads features from `features_dir`; if `false`, extracts features from the dataset in `dataset_dir`.
+  n_components: 1000            # Number of components for Nystroem kernel approximation.
+  dimension: '3'              # Specifies which data modality to use for training: '2' for 2D (image), '3' for 3D (depth), '25' for 2.5D (both).
+  use_saved_features: true    # If `true`, loads features from `features_dir`; if `false`, extracts features from the dataset in `dataset_dir`.
   subset_size: 0               # If > 0, uses a random subset of this size for feature extraction/training (useful for quick tests).
 
 run_inference:

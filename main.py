@@ -1,4 +1,3 @@
-from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import classification_report
 from sklearn.model_selection import train_test_split
 
@@ -15,9 +14,7 @@ def train_model(dataset_dir, features_dir, models_dir, results_dir, test_size=0.
         save_features(f"{dataset_dir}/2D/", f"{dataset_dir}/3D/", features_dir, subset=subset_size)
 
     # Load features and encode labels
-    X_data, labels = load_features(features_dir, dimension=dimension)
-    le = LabelEncoder()
-    y_data = le.fit_transform(labels)
+    X_data, y_data = load_features(features_dir, dimension=dimension)
 
     print(f"Training start time: {datetime.datetime.now().isoformat()}")
 
@@ -37,10 +34,8 @@ def train_model(dataset_dir, features_dir, models_dir, results_dir, test_size=0.
         os.mkdir(results_dir)
 
     with open(f"{results_dir}/{model.model_name}_{dimension}D.txt", 'w') as f:
-        y_test_original = le.inverse_transform(y_test)
-        y_pred_original = le.inverse_transform(y_pred)
-        print(classification_report(y_test_original, y_pred_original, zero_division=0))
-        print(classification_report(y_test_original, y_pred_original, zero_division=0), file=f)
+        print(classification_report(y_test, y_pred, zero_division=0))
+        print(classification_report(y_test, y_pred, zero_division=0), file=f)
 
 
 def run_inference(image_path, depth_path, models_dir, model_name, region_size=400, window_size=400, patch_size=128, subdivide_axis=3, threshold=3, dimension: Literal['2', '25', '3']='25'):
@@ -113,7 +108,7 @@ def run_inference(image_path, depth_path, models_dir, model_name, region_size=40
         if uxos[uxos == uxo].size < threshold:
             uxos[uxos == uxo] = -1
 
-    uxo_mask = np.isin(labels, uxos).astype(int)
+    uxo_mask = np.isin(labels, uxos).astype(int)  # TODO: Make it compatible with multi-class. Return mask and highlighted image
     uxo_mask[uxo_mask == 0] = -1
 
     return apply_mask(img, uxo_mask, mode='highlight')

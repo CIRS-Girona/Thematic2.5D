@@ -70,6 +70,12 @@ def create_dataset(images_path, depths_path, masks_path, dataset_dir, prefix='',
         for label in labels:
             image = cv2.imread(f"{images_path}/{label}.jpg", cv2.IMREAD_UNCHANGED)
             depth = cv2.imread(f"{depths_path}/{label}.png", cv2.IMREAD_UNCHANGED)
+
+            if image is None or depth is None:
+                del image, depth
+                gc.collect()
+                continue
+
             mask = np.astype(cv2.imread(f"{masks_path}/{label}.png", cv2.IMREAD_UNCHANGED), np.int32)
 
             mask[mask < 3] = 0  # Set Non-UXO pixels to 0

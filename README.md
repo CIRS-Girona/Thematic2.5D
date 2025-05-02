@@ -137,6 +137,6 @@ The following table provides visual examples of the model outputs for different 
 
 ## References
 
-* A. C. R. Gleason, A. Shihavuddin, N. Gracias, G. Schultz and B. E. Gintert, "Improved supervised classification of underwater military munitions using height features derived from optical imagery," OCEANS 2015 - MTS/IEEE Washington, Washington, DC, USA, 2015, pp. 1-5, doi: [10.23919/OCEANS.2015.7404580](https://doi.org/10.23919/OCEANS.2015.7404580).
 * Shihavuddin, A. S. M., Gracias, N., Garcia, R., Gleason, A. C. R., & Gintert, B. (2013). Image-Based Coral Reef Classification and Thematic Mapping. *Remote Sensing*, *5*(4), 1809-1841. [https://doi.org/10.3390/rs5041809](https://doi.org/10.3390/rs5041809)
 * Shihavuddin, Asm, Gracias, Nuno, Garcia, Rafael, Campos, Ricard, Gleason, Arthur, & Gintert, Brooke. (2014). Automated Detection of Underwater Military Munitions Using Fusion of 2D and 2.5D Features From Optical Imagery. *Marine Technology Society Journal*, *48*(4), 7-17. [https://doi.org/10.4031/MTSJ.48.4.7](https://doi.org/10.4031/MTSJ.48.4.7)
+* A. C. R. Gleason, A. Shihavuddin, N. Gracias, G. Schultz and B. E. Gintert, "Improved supervised classification of underwater military munitions using height features derived from optical imagery," OCEANS 2015 - MTS/IEEE Washington, Washington, DC, USA, 2015, pp. 1-5, doi: [10.23919/OCEANS.2015.7404580](https://doi.org/10.23919/OCEANS.2015.7404580).

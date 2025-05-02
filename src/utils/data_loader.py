@@ -21,6 +21,7 @@ def load_data(images_dir: str, depth_dir: str | None = None, subset: int = 0) ->
     for i, (class_name, image_names) in enumerate(zip(classes, f_names)):
         class_image_dir = os.path.join(images_dir, class_name)
         class_depth_dir = os.path.join(depth_dir, class_name)
+
         if not os.path.isdir(class_image_dir):
             continue
 
