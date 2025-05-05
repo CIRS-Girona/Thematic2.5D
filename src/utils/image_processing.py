@@ -2,14 +2,16 @@ import numpy as np
 from typing import Literal
 import cv2
 
+COLORMAP = cv2.applyColorMap(np.arange(0, 256).astype(np.uint8), cv2.COLORMAP_HSV)
+
 
 def contrast_enhancement(image: np.ndarray, clip_limit: float = 2.0, tile_grid_size: tuple[int, int] = (8, 8)) -> np.ndarray:
     hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
     clahe = cv2.createCLAHE(clipLimit=clip_limit, tileGridSize=tile_grid_size)
     hsv_image[:, :, 2] = clahe.apply(hsv_image[:, :, 2])  # The value channel is the intensity of the image (gray scale)
-    corrected_image = cv2.cvtColor(hsv_image, cv2.COLOR_YUV2BGR)
+    enhanced_image = cv2.cvtColor(hsv_image, cv2.COLOR_HSV2BGR)
 
-    return corrected_image
+    return enhanced_image
 
 
 def contrast_stretch(image: np.ndarray) -> np.ndarray:
@@ -44,14 +46,25 @@ def superpixel_segmentation(image: np.ndarray, region_size: int = 40, ruler: flo
     return labels, centroids
 
 
-def apply_mask(image: np.ndarray, mask: np.ndarray, mode: Literal['contours', 'highlight'] = 'highlight', border_color: tuple[np.uint8, np.uint8, np.uint8] = (255, 255, 255), border_thickness: int = 2, highlight_color: tuple[np.uint8, np.uint8, np.uint8] = (0, 0, 255), alpha: float = 0.3) -> np.ndarray:
+def apply_mask(image: np.ndarray, mask: np.ndarray, mode: Literal['contours', 'highlight'] = 'highlight', border_thickness: int = 2, alpha: float = 0.3) -> np.ndarray:
     output_image = image.copy()
 
-    if mode == 'contours':
-        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        cv2.drawContours(output_image, contours, -1, border_color, border_thickness)
-    else:
-        output_image[mask >= 0] = highlight_color
+    valid_vals = np.unique(mask[mask >= 0])
+    min_val, max_val = valid_vals[0], valid_vals[-1]
+    for val in valid_vals:
+        if min_val == max_val:
+            color = COLORMAP[0]
+        else:
+            color = int(255 * (val - min_val) / (max_val - min_val))
+            color = COLORMAP[color]
+
+        if mode == 'contours':
+            contours, _ = cv2.findContours(mask[mask == val], cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            cv2.drawContours(output_image, contours, -1, color, border_thickness)
+        else:
+            output_image[mask == val] = color
+
+    if mode == 'highlight':
         output_image = cv2.addWeighted(image, 1 - alpha, output_image, alpha, 0)
 
     return output_image

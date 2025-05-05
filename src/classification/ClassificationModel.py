@@ -1,7 +1,7 @@
 import numpy as np
 import os, pickle, datetime
 
-from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 from sklearn.decomposition import PCA
 from sklearn.kernel_approximation import Nystroem
@@ -13,6 +13,7 @@ class _ClassificationModel:
 
     def fit(self, X: np.ndarray, y: np.ndarray):
         self.model.fit(X, y)
+        self.classes_ = self.model.classes_
         return self
 
     def transform(self, X: np.ndarray) -> np.ndarray:
@@ -32,8 +33,6 @@ class ClassificationModel:
             os.mkdir(model_name_dir)
 
         self.model_dir = model_name_dir
-
-        self.le = LabelEncoder()
 
         pipeline = []
 
@@ -59,9 +58,7 @@ class ClassificationModel:
             X_train (np.array): Training features.
             y_train (np.array): Training labels.
         """
-        encoded_y = self.le.fit_transform(y_train)
-        output =  self.model.fit_transform(X_train, encoded_y)
-        return self.le.inverse_transform(output)
+        return self.model.fit_transform(X_train, y_train)
 
 
     def evaluate(self, X: np.ndarray):
@@ -74,7 +71,7 @@ class ClassificationModel:
         Returns:
             np.array: Prediction for y vector
         """
-        return self.le.inverse_transform(self.model.transform(X))
+        return self.model.transform(X)
 
 
     def save_model(self) -> None:
@@ -89,10 +86,7 @@ class ClassificationModel:
 
         model_path = os.path.join(self.model_dir, filename)
         with open(model_path, 'wb') as f:
-            pickle.dump({
-                'model': self.model,
-                'label_encoder': self.le
-            }, f)
+            pickle.dump(self.model, f)
 
 
     def load_model(self, filename: str) -> None:
@@ -105,8 +99,6 @@ class ClassificationModel:
         model_path = os.path.join(self.model_dir, filename)
         if os.path.exists(model_path):
             with open(model_path, 'rb') as f:
-                pickled = pickle.load(f)
-                self.model = pickled['model']
-                self.le = pickled['label_encoder']
+                self.model = pickle.load(f)
         else:
             raise FileNotFoundError(f"No model file found at {model_path}")

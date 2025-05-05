@@ -61,10 +61,10 @@ def process_data(image, depth, mask, indices, bg_max, dataset_dir, prefix, uxo_t
             bg_count += 1
 
 
-def create_dataset(images_path, depths_path, masks_path, dataset_dir, prefix='', bg_per_img=20_000, thread_count=64, uxo_sample_rate=0.01, uxo_threshold=0.4, invalid_threshold=0.01, window_size=400, patch_size=128, angles=(0, 90, 180, 270)):
+def create_dataset(images_path, depths_path, masks_path, dataset_dir, uxo_start_code, invalid_code, prefix='', bg_per_img=20_000, thread_count=64, uxo_sample_rate=0.01, uxo_threshold=0.4, invalid_threshold=0.01, window_size=400, patch_size=128, angles=(0, 90, 180, 270)):
     print(f"Started processing dataset {prefix}")
 
-    labels = [l.split(".")[0] for l in os.listdir(masks_path)]
+    labels = ['.'.join(l.split(".")[:-1]) for l in os.listdir(masks_path)]
 
     with ThreadPoolExecutor(max_workers=thread_count) as exe:
         for label in labels:
@@ -78,10 +78,10 @@ def create_dataset(images_path, depths_path, masks_path, dataset_dir, prefix='',
 
             mask = np.astype(cv2.imread(f"{masks_path}/{label}.png", cv2.IMREAD_UNCHANGED), np.int32)
 
-            mask[mask < 3] = 0  # Set Non-UXO pixels to 0
+            mask[mask < uxo_start_code] = 0  # Set Non-UXO pixels to 0
 
             # Set invalid pixels to -1
-            mask[mask == 99] = -1
+            mask[mask == invalid_code] = -1
             mask[depth == 0] = -1
 
             if np.all(np.unique(mask) == -1):

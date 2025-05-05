@@ -118,6 +118,6 @@ def load_features(features_dir: str, dimension: Literal['2', '25', '3'] = '2') -
             features = np.array(msgpack.unpackb(f.read()))
 
     with open(f"{features_dir}/labels.msgpack", 'rb') as f:
-        labels = msgpack.unpackb(f.read())
+        labels = np.array(msgpack.unpackb(f.read()))
 
     return features, labels

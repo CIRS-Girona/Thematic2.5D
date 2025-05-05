@@ -1,0 +1,13 @@
+- [ ] Implement changes:
+    - [x] Multiclass Classification
+    - [x] Binary mode
+    - [x] Mask generation
+    - [x] Confusion Matrix
+    - [ ] mean Intersection-over-Union (mIoU)
+    - [ ] Clean up and organize code, add docstring, variable types
+    - [ ] Update README to reflect new features
+- [ ] Prepare the JOSS paper:
+    - [ ] Changes compared to shihav's implementation
+    - [ ] Repo structure and technical flow chart
+- [ ] Train the models on the new plots (also on man-made objects?)
+- [ ] Train the model on synthetic datasets -- one only containing UXOs and another containing UXOs and man-made objects (clutter)
