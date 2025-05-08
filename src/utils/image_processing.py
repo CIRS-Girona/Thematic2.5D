@@ -2,7 +2,7 @@ import numpy as np
 from typing import Literal
 import cv2
 
-COLORMAP = cv2.applyColorMap(np.arange(0, 256).astype(np.uint8), cv2.COLORMAP_HSV)
+COLORMAP = cv2.applyColorMap(np.arange(0, 256).astype(np.uint8), cv2.COLORMAP_RAINBOW)
 
 
 def contrast_enhancement(image: np.ndarray, clip_limit: float = 2.0, tile_grid_size: tuple[int, int] = (8, 8)) -> np.ndarray:
@@ -46,17 +46,12 @@ def superpixel_segmentation(image: np.ndarray, region_size: int = 40, ruler: flo
     return labels, centroids
 
 
-def apply_mask(image: np.ndarray, mask: np.ndarray, mode: Literal['contours', 'highlight'] = 'highlight', border_thickness: int = 2, alpha: float = 0.3) -> np.ndarray:
+def apply_mask(image: np.ndarray, mask: np.ndarray, min_val: int = 0, max_val: int = 1, mode: Literal['contours', 'highlight'] = 'highlight', border_thickness: int = 2, beta: float = 0.3) -> np.ndarray:
     output_image = image.copy()
 
     valid_vals = np.unique(mask[mask >= 0])
-    min_val, max_val = valid_vals[0], valid_vals[-1]
     for val in valid_vals:
-        if min_val == max_val:
-            color = COLORMAP[0]
-        else:
-            color = int(255 * (val - min_val) / (max_val - min_val))
-            color = COLORMAP[color]
+        color = COLORMAP[int(255 * (val - min_val) / (max_val - min_val))]
 
         if mode == 'contours':
             contours, _ = cv2.findContours(mask[mask == val], cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -65,7 +60,7 @@ def apply_mask(image: np.ndarray, mask: np.ndarray, mode: Literal['contours', 'h
             output_image[mask == val] = color
 
     if mode == 'highlight':
-        output_image = cv2.addWeighted(image, 1 - alpha, output_image, alpha, 0)
+        output_image = cv2.addWeighted(image, 1 - beta, output_image, beta, 0)
 
     return output_image
 

@@ -21,9 +21,9 @@ def train_model(dataset_dir, features_dir, models_dir, results_dir, uxo_start_co
     if binary_mode:
         for y in np.unique(y_data):
             if y.isdigit() and int(y) >= uxo_start_code:
-                y_data[y == y_data] = 1
+                y_data[y == y_data] = 'uxo'
             else:
-                y_data[y == y_data] = 0
+                y_data[y == y_data] = 'background'
 
     print(f"Training start time: {datetime.datetime.now().isoformat()}")
 
@@ -54,7 +54,7 @@ def train_model(dataset_dir, features_dir, models_dir, results_dir, uxo_start_co
     plt.close('all')
 
 
-def run_inference(image_path, depth_path, models_dir, results_dir, model_name, binary_mode, uxo_start_code, region_size=400, window_size=400, patch_size=128, subdivide_axis=3, threshold=3, dimension: Literal['2', '25', '3']='25'):
+def run_inference(image_path, depth_path, models_dir, results_dir, model_name, binary_mode, uxo_start_code, max_uxo_code, region_size=400, window_size=400, patch_size=128, subdivide_axis=3, threshold=3, dimension: Literal['2', '25', '3']='25'):
     print(f"Running inference ({dimension}D) on:\n{image_path}\n")
 
     if not os.path.exists(results_dir) or not os.path.isdir(results_dir):
@@ -129,17 +129,22 @@ def run_inference(image_path, depth_path, models_dir, results_dir, model_name, b
     for y in np.unique(y_pred):
         regions = patches[y_pred == y]
 
-        if (binary_mode and int(y) == 1) or (not binary_mode and y.isdigit() and int(y) >= uxo_start_code):
+        if (binary_mode and y == 'uxo') or (not binary_mode and y.isdigit() and int(y) >= uxo_start_code):
             for region in np.unique(regions):
                 if regions[regions == region].size < threshold:
                     uxo_mask[labels == region] = 0
                 else:
-                    uxo_mask[labels == region] = int(y)
+                    uxo_mask[labels == region] = int(y) if not binary_mode else 1
 
     cv2.imwrite(f"{results_dir}/{img_label}_mask.png", uxo_mask.astype(np.uint8))
 
     uxo_mask[uxo_mask == 0] = -1
-    inference = apply_mask(img, uxo_mask, mode='highlight')
+
+    if not binary_mode:
+        inference = apply_mask(img, uxo_mask, min_val=uxo_start_code, max_val=max_uxo_code, mode='highlight')
+    else:
+        inference = apply_mask(img, uxo_mask, mode='highlight')
+
     cv2.imwrite(f"{results_dir}/{img_label}.png", inference)
 
 
@@ -224,6 +229,7 @@ if __name__ == "__main__":
                     config['run_inference']['model_name'],
                     config['run_inference']['binary_mode'],
                     config['uxo_start_code'],
+                    config['max_uxo_code'],
                     config['run_inference']['region_size'],
                     config['run_inference']['window_size'],
                     config['run_inference']['patch_size'],

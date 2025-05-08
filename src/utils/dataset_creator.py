@@ -26,7 +26,7 @@ def process_data(image, depth, mask, indices, bg_max, dataset_dir, prefix, uxo_t
         d = depth[y_s:y_e, x_s:x_e]
 
         # If the patch has any invalid area, skip
-        if np.sum(m == -1)/m.size > invalid_threshold:
+        if np.sum(m == None)/m.size > invalid_threshold:
             continue
 
         t = cv2.resize(t, (patch_size, patch_size), interpolation=cv2.INTER_AREA)
@@ -78,13 +78,13 @@ def create_dataset(images_path, depths_path, masks_path, dataset_dir, uxo_start_
 
             mask = np.astype(cv2.imread(f"{masks_path}/{label}.png", cv2.IMREAD_UNCHANGED), np.int32)
 
+            # Set invalid pixels to None
+            mask[mask == invalid_code] = None
+            mask[depth == 0] = None
+
             mask[mask < uxo_start_code] = 0  # Set Non-UXO pixels to 0
 
-            # Set invalid pixels to -1
-            mask[mask == invalid_code] = -1
-            mask[depth == 0] = -1
-
-            if np.all(np.unique(mask) == -1):
+            if np.all(np.unique(mask) == None):
                 del image, mask, depth
                 gc.collect()
                 print(f"Finished processing image {prefix}")

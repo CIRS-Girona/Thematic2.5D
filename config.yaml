@@ -1,5 +1,6 @@
 invalid_code: 99
 uxo_start_code: 3
+max_uxo_code: 6
 
 directories:
   source_dir: './'                   # Root directory for the project data.
@@ -11,7 +12,7 @@ directories:
 
 create_dataset:
   enabled: false                # Set to `true` to enable dataset creation.
-  bg_per_img: 20             # Maximum number of background patches to extract per input mosaic.
+  bg_per_img: 100             # Maximum number of background patches to extract per input mosaic.
   thread_count: 128             # Number of threads to use for parallel processing during dataset creation.
   uxo_sample_rate: 0.001       # Fraction of UXO pixels to sample as centers for potential UXO patches.
   uxo_threshold: 0.4           # Minimum fraction of UXO pixels required within a window for it to be labeled as a UXO patch.
@@ -25,21 +26,21 @@ train_model:
   binary_mode: false
   test_size: 0.1               # Fraction of the data to use for the test set.
   n_components: 200            # Number of components for Nystroem kernel approximation.
-  dimension: '25'              # Specifies which data modality to use for training: '2' for 2D (image), '3' for 3D (depth), '25' for 2.5D (both).
+  dimension: '2'              # Specifies which data modality to use for training: '2' for 2D (image), '3' for 3D (depth), '25' for 2.5D (both).
   use_saved_features: true    # If `true`, loads features from `features_dir`; if `false`, extracts features from the dataset in `dataset_dir`.
   subset_size: 0               # If > 0, uses a random subset of this size for feature extraction/training (useful for quick tests).
 
 run_inference:
   enabled: true                # Set to `true` to enable inference.
-  image_path: dataset/temp/images  # Path to the input image directory for inference.
-  depth_path: dataset/temp/depths  # Path to the input depth map directory for inference.
-  model_name: SVM_25D.pkl       # Filename of the trained model (located in `models_dir`) to use for inference.
-  binary_mode: false
+  image_path: data/temp/images  # Path to the input image directory for inference.
+  depth_path: data/temp/depths  # Path to the input depth map directory for inference.
+  model_name: SVM_3D_binary.pkl       # Filename of the trained model (located in `models_dir`) to use for inference.
+  binary_mode: true
   region_size: 400              # Parameter for superpixel segmentation (average size of superpixels).
   window_size: 400              # Size of the window extracted around superpixel centroids/subdivisions for feature extraction during inference.
   patch_size: 128               # Size to which the extracted inference window is resized.
   subdivide_axis: 3             # Number of subdivisions along each axis within the main window around a superpixel centroid. Used for neighbor polling.
   threshold: 4                  # Minimum number of positive predictions within the subdivisions of a superpixel region required to classify the region as UXO.
-  dimension: '25'               # Specifies which features the loaded model expects. Must match the dimension the model was trained with.
-  thread_count: 1
-  output_dir: 'plot1'  # Name for the output directory images will be saved in. This will be created in `results_dir`.
+  dimension: '3'               # Specifies which features the loaded model expects. Must match the dimension the model was trained with.
+  thread_count: 13
+  output_dir: '3D_binary'  # Name for the output directory images will be saved in. This will be created in `results_dir`.
