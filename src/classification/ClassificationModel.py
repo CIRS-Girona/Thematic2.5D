@@ -21,18 +21,13 @@ class _ClassificationModel:
 
 
 class ClassificationModel:
-    def __init__(self, model, model_dir: str = './models/', model_name: str = '', standardize: bool = True, pca: bool = True, kernel_mapping: bool = True, n_components: int = 100):
-        self.model_dir = model_dir
-        self.model_name = model_name
+    def __init__(self, model, label: str = '', model_dir: str = './models/', model_name: str = '', standardize: bool = True, pca: bool = True, kernel_mapping: bool = True, n_components: int = 100):
+        self.label = label
+        self.name = model_name
 
-        if not os.path.exists(self.model_dir) or not os.path.isdir(self.model_dir):
-            os.mkdir(self.model_dir)
-
-        model_name_dir = os.path.join(self.model_dir, self.model_name)
-        if not os.path.exists(model_name_dir) or not os.path.isdir(model_name_dir):
-            os.mkdir(model_name_dir)
-
-        self.model_dir = model_name_dir
+        self.dir = os.path.join(model_dir, self.name)
+        if not os.path.exists(self.dir) or not os.path.isdir(self.dir):
+            os.makedirs(self.dir)
 
         pipeline = []
 
@@ -81,12 +76,17 @@ class ClassificationModel:
         Args:
             filename: Path to save the model file.
         """
-        timestamp = datetime.datetime.now().isoformat()
-        filename = f"{self.model_name}-{timestamp}.pkl"
+        binary = '_binary' if len(self.model.classes_) == 2 else ''
+        filename = f"{self.name}{self.label}{binary}.pkl"
 
-        model_path = os.path.join(self.model_dir, filename)
+        model_path = os.path.join(self.dir, filename)
         with open(model_path, 'wb') as f:
-            pickle.dump(self.model, f)
+            pickle.dump({
+                'name': self.name,
+                'dir': self.dir,
+                'label': self.label,
+                'model': self.model,
+            }, f)
 
 
     def load_model(self, filename: str) -> None:
@@ -96,9 +96,14 @@ class ClassificationModel:
         Args:
             filename: Path to load the model file.
         """
-        model_path = os.path.join(self.model_dir, filename)
+        model_path = os.path.join(self.dir, filename)
         if os.path.exists(model_path):
             with open(model_path, 'rb') as f:
-                self.model = pickle.load(f)
+                info = pickle.load(f)
+
+                self.name = info['name']
+                self.dir = info['dir']
+                self.label = info['label']
+                self.model = info['model']
         else:
             raise FileNotFoundError(f"No model file found at {model_path}")

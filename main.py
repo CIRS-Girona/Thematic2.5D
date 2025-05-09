@@ -31,7 +31,7 @@ def train_model(dataset_dir, features_dir, models_dir, results_dir, uxo_start_co
     X_train, X_test, y_train, y_test = train_test_split(X_data, y_data, stratify=y_data, test_size=test_size)
 
     # Train model on full dataset and save it
-    model = SVMModel(model_dir=models_dir, n_components=n_components)
+    model = SVMModel(label=dimension, model_dir=models_dir, n_components=n_components)
     model.train(X_train, y_train)
     model.save_model()
 
@@ -42,7 +42,7 @@ def train_model(dataset_dir, features_dir, models_dir, results_dir, uxo_start_co
     if not os.path.exists(results_dir) or not os.path.isdir(results_dir):
         os.mkdir(results_dir)
 
-    with open(f"{results_dir}/{model.model_name}_{dimension}D.txt", 'w') as f:
+    with open(f"{results_dir}/{model.name}_{dimension}D.txt", 'w') as f:
         print(classification_report(y_test, y_pred, zero_division=0))
         print(classification_report(y_test, y_pred, zero_division=0), file=f)
 
@@ -50,13 +50,24 @@ def train_model(dataset_dir, features_dir, models_dir, results_dir, uxo_start_co
     cmd = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=model.model.classes_)
     cmd.plot()
     plt.tight_layout()
-    plt.savefig(f"{results_dir}/{model.model_name}_{dimension}D.png")
+    plt.savefig(f"{results_dir}/{model.name}_{dimension}D.png")
     plt.close('all')
 
 
-def run_inference(image_path, depth_path, models_dir, results_dir, model_name, binary_mode, uxo_start_code, max_uxo_code, region_size=400, window_size=400, patch_size=128, subdivide_axis=3, threshold=3, dimension: Literal['2', '25', '3']='25'):
-    print(f"Running inference ({dimension}D) on:\n{image_path}\n")
+def run_inference(image_path, depth_path, models_dir, results_dir, model_name, uxo_start_code, max_uxo_code, region_size=400, window_size=400, patch_size=128, subdivide_axis=3, threshold=3):
+    # SVM Model
+    model = SVMModel(model_dir=models_dir)
+    model.load_model(model_name)
+    
+    dimension = model_name.split('.')[0].split('_')[0].replace('SVM', '')  # TODO: Do it properly
+    binary_mode = len(model.model.classes_) == 2
 
+    if binary_mode:
+        print(f"Running binary classification ({dimension}D) on:\n{image_path}\n")
+    else:
+        print(f"Running multi-class classification ({dimension}D) on:\n{image_path}\n")
+
+    results_dir = f"{results_dir}/{'.'.join(model_name.split('.')[:-1])}"
     if not os.path.exists(results_dir) or not os.path.isdir(results_dir):
         os.makedirs(results_dir)
 
@@ -117,11 +128,7 @@ def run_inference(image_path, depth_path, models_dir, results_dir, model_name, b
     else:
         features = np.concatenate([features_2d, features_3d], axis=1)
 
-    print("Loading model and running inference")
-
-    # SVM Model
-    model = SVMModel(model_dir=models_dir)
-    model.load_model(model_name)
+    print("Running inference")
 
     y_pred = model.evaluate(features)
 
@@ -225,9 +232,8 @@ if __name__ == "__main__":
                     f"{config['run_inference']['image_path']}/{label}.jpg",
                     f"{config['run_inference']['depth_path']}/{label}.png",
                     models_dir,
-                    f"{results_dir}/{config['run_inference']['output_dir']}",
+                    results_dir,
                     config['run_inference']['model_name'],
-                    config['run_inference']['binary_mode'],
                     config['uxo_start_code'],
                     config['max_uxo_code'],
                     config['run_inference']['region_size'],
@@ -235,5 +241,4 @@ if __name__ == "__main__":
                     config['run_inference']['patch_size'],
                     config['run_inference']['subdivide_axis'],
                     config['run_inference']['threshold'],
-                    config['run_inference']['dimension']
                 )
