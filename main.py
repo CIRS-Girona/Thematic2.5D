@@ -1,158 +1,7 @@
-from sklearn.metrics import classification_report, confusion_matrix, ConfusionMatrixDisplay
-from sklearn.model_selection import train_test_split
-
-import numpy as np
-import matplotlib.pyplot as plt
-from typing import Literal
+import os, yaml
 from concurrent.futures import ThreadPoolExecutor
-import datetime, cv2, os, yaml
 
-from src.utils import ADJUST_COOR, create_dataset, load_features, save_features, extract_features, process_images, superpixel_segmentation, apply_mask
-from src.classification import SVMModel
-
-
-def train_model(dataset_dir, features_dir, models_dir, results_dir, uxo_start_code, binary_mode=False, test_size=0.1, n_components: int = 100, dimension: Literal['2', '25', '3'] = '25', use_saved_features=True, subset_size=0):
-    if not use_saved_features:
-        save_features(f"{dataset_dir}/2D/", f"{dataset_dir}/3D/", features_dir, subset=subset_size)
-
-    # Load features and encode labels
-    X_data, y_data = load_features(features_dir, dimension=dimension)
-
-    if binary_mode:
-        for y in np.unique(y_data):
-            if y.isdigit() and int(y) >= uxo_start_code:
-                y_data[y == y_data] = 'uxo'
-            else:
-                y_data[y == y_data] = 'background'
-
-    print(f"Training start time: {datetime.datetime.now().isoformat()}")
-
-    # Transform and split the data into training and testing sets
-    X_train, X_test, y_train, y_test = train_test_split(X_data, y_data, stratify=y_data, test_size=test_size)
-
-    # Train model on full dataset and save it
-    model = SVMModel(label=dimension, model_dir=models_dir, n_components=n_components)
-    model.train(X_train, y_train)
-    model.save_model()
-
-    # Evaluate on the test set
-    y_pred = model.evaluate(X_test)
-
-    # Save the classification report to a file
-    if not os.path.exists(results_dir) or not os.path.isdir(results_dir):
-        os.mkdir(results_dir)
-
-    with open(f"{results_dir}/{model.name}_{dimension}D.txt", 'w') as f:
-        print(classification_report(y_test, y_pred, zero_division=0))
-        print(classification_report(y_test, y_pred, zero_division=0), file=f)
-
-    cm = confusion_matrix(y_test, y_pred, normalize='true')
-    cmd = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=model.model.classes_)
-    cmd.plot()
-    plt.tight_layout()
-    plt.savefig(f"{results_dir}/{model.name}_{dimension}D.png")
-    plt.close('all')
-
-
-def run_inference(image_path, depth_path, models_dir, results_dir, model_name, uxo_start_code, max_uxo_code, region_size=400, window_size=400, patch_size=128, subdivide_axis=3, threshold=3):
-    # SVM Model
-    model = SVMModel(model_dir=models_dir)
-    model.load_model(model_name)
-    
-    dimension = model_name.split('.')[0].split('_')[0].replace('SVM', '')  # TODO: Do it properly
-    binary_mode = len(model.model.classes_) == 2
-
-    if binary_mode:
-        print(f"Running binary classification ({dimension}D) on:\n{image_path}\n")
-    else:
-        print(f"Running multi-class classification ({dimension}D) on:\n{image_path}\n")
-
-    results_dir = f"{results_dir}/{'.'.join(model_name.split('.')[:-1])}"
-    if not os.path.exists(results_dir) or not os.path.isdir(results_dir):
-        os.makedirs(results_dir)
-
-    img = cv2.imread(image_path)
-    depth = cv2.imread(depth_path, cv2.IMREAD_UNCHANGED)
-
-    img_label = '.'.join(image_path.split('/')[-1].split('.')[:-1])
-
-    print("Applying Superpixel Segmentation")
-    labels, centroids = superpixel_segmentation(img, ruler=1, region_size=region_size)
-
-    # Loop over each centroid
-    imgs = []
-    depths = []
-    patches = []
-    for c_y, c_x in centroids:
-        window_radius = window_size // 2
-
-        # Calculate patch boundaries
-        x_start, x_end = ADJUST_COOR(c_x, window_radius, (0, img.shape[1]))
-        y_start, y_end = ADJUST_COOR(c_y, window_radius, (0, img.shape[0]))
-
-        # Create coordinate arrays for subdivisions
-        x_coords = np.linspace(x_start, x_end, subdivide_axis + 1, endpoint=True, dtype=int)
-        y_coords = np.linspace(y_start, y_end, subdivide_axis + 1, endpoint=True, dtype=int)
-
-        # Calculate steps between subdivision boundaries
-        for x_step in x_coords:
-            for y_step in y_coords:
-                x_sub_start, x_sub_end = ADJUST_COOR(x_step, window_radius, (0, img.shape[1]))
-                y_sub_start, y_sub_end = ADJUST_COOR(y_step, window_radius, (0, img.shape[0]))
-
-                # Extract and resize image patch
-                img_patch = cv2.resize(img[x_sub_start:x_sub_end, y_sub_start:y_sub_end, :], (patch_size, patch_size), interpolation=cv2.INTER_AREA)
-                imgs.append(img_patch)
-
-                # Extract, resize, and normalize depth patch
-                depth_patch = cv2.resize(depth[x_sub_start:x_sub_end, y_sub_start:y_sub_end], (patch_size, patch_size), interpolation=cv2.INTER_AREA)
-                depth_patch = depth_patch.astype(np.double)
-                depth_patch -= np.min(depth_patch)
-                depth_patch /= max(np.max(depth_patch), 1)
-                depth_patch = np.nan_to_num(255 * depth_patch).astype(np.uint8).astype(np.double)
-                depths.append(depth_patch)
-
-                # Store corresponding label
-                patches.append(labels[c_x, c_y])
-
-    print("Processing patches")
-
-    patches = np.array(patches)
-    gray_images, hsv_images = process_images(imgs)
-    features_2d, features_3d = extract_features(gray_images, hsv_images, None if dimension == '2' else depths)
-
-    if dimension == '3':
-        features = features_3d
-    elif dimension == '2':
-        features = features_2d
-    else:
-        features = np.concatenate([features_2d, features_3d], axis=1)
-
-    print("Running inference")
-
-    y_pred = model.evaluate(features)
-
-    uxo_mask = np.zeros_like(labels)
-    for y in np.unique(y_pred):
-        regions = patches[y_pred == y]
-
-        if (binary_mode and y == 'uxo') or (not binary_mode and y.isdigit() and int(y) >= uxo_start_code):
-            for region in np.unique(regions):
-                if regions[regions == region].size < threshold:
-                    uxo_mask[labels == region] = 0
-                else:
-                    uxo_mask[labels == region] = int(y) if not binary_mode else 1
-
-    cv2.imwrite(f"{results_dir}/{img_label}_mask.png", uxo_mask.astype(np.uint8))
-
-    uxo_mask[uxo_mask == 0] = -1
-
-    if not binary_mode:
-        inference = apply_mask(img, uxo_mask, min_val=uxo_start_code, max_val=max_uxo_code, mode='highlight')
-    else:
-        inference = apply_mask(img, uxo_mask, mode='highlight')
-
-    cv2.imwrite(f"{results_dir}/{img_label}.png", inference)
+from src.utils import create_dataset, train_model, run_inference
 
 
 if __name__ == "__main__":
@@ -227,13 +76,20 @@ if __name__ == "__main__":
             for img in os.listdir(config['run_inference']['depth_path']):
                 label = '.'.join(img.split('.')[:-1])
 
+                image_path = f"{config['run_inference']['image_path']}/{label}"
+                if os.path.exists(f"{image_path}.jpg") and os.path.isfile(f"{image_path}.jpg"):
+                    image_path = f"{image_path}.jpg"
+                elif os.path.exists(f"{image_path}.png") and os.path.isfile(f"{image_path}.png"):
+                    image_path = f"{image_path}.png"
+                else:
+                    raise FileNotFoundError("Images are neither in jpg or png format")
+
                 exe.submit(
                     run_inference,
-                    f"{config['run_inference']['image_path']}/{label}.jpg",
+                    image_path,
                     f"{config['run_inference']['depth_path']}/{label}.png",
                     models_dir,
                     results_dir,
-                    config['run_inference']['model_name'],
                     config['uxo_start_code'],
                     config['max_uxo_code'],
                     config['run_inference']['region_size'],

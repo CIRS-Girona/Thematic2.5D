@@ -1,26 +1,51 @@
 from skimage.feature import local_binary_pattern, graycomatrix, graycoprops
 from scipy.stats import skew, kurtosis
-from typing import List, Literal
+from typing import List, Literal, Tuple
 from threading import Thread
-import cv2, numpy as np, time, datetime
+import cv2
+import numpy as np
+import time
+import datetime
 
 
 # https://stackoverflow.com/questions/33781502/how-to-get-the-real-and-imaginary-parts-of-a-gabor-kernel-matrix-in-opencv
-KERNELS = [
-    cv2.getGaborKernel(ksize=(5, 5), sigma=sigma, theta=np.pi * theta / 4, lambd=1/frequency, gamma=1, psi=0) +  # Real part (the cosine)
-    1j * cv2.getGaborKernel(ksize=(5, 5), sigma=sigma, theta=np.pi * theta / 4, lambd=1/frequency, gamma=1, psi=np.pi/2)  # Complex part (the sine)
+KERNELS: List[np.ndarray] = [
+    cv2.getGaborKernel(ksize=(5, 5), sigma=sigma, theta=np.pi * theta / 4, lambd=1 / frequency, gamma=1, psi=0) +  # Real part (the cosine)
+    1j * cv2.getGaborKernel(ksize=(5, 5), sigma=sigma, theta=np.pi * theta / 4, lambd=1 / frequency, gamma=1, psi=np.pi / 2)  # Complex part (the sine)
     for theta in range(4)
     for sigma in (1, 3)
     for frequency in (0.05, 0.25)
 ]
 
 
-def extract_color_features(image: np.ndarray, bins: int = 8, range: tuple[int, int] = (0, 256)) -> np.ndarray:
+def extract_color_features(image: np.ndarray, bins: int = 8, range: Tuple[int, int] = (0, 256)) -> np.ndarray:
+    """
+    Extracts color histogram features from an image.
+
+    Args:
+        image: The input image as a NumPy array.
+        bins: The number of bins for the histogram. Defaults to 8.
+        range: The range of pixel values to consider. Defaults to (0, 256).
+
+    Returns:
+        A NumPy array representing the normalized color histogram.
+    """
     color_features, _ = np.histogram(image.flatten(), bins=bins, range=range, density=True)
     return color_features
 
 
 def extract_lbp_features(image: np.ndarray, n_points: int = 24, radius: float = 3.0) -> np.ndarray:
+    """
+    Extracts Local Binary Pattern (LBP) features from a grayscale image.
+
+    Args:
+        image: The input grayscale image as a NumPy array.
+        n_points: The number of circular neighboring points to consider. Defaults to 24.
+        radius: The radius of the circle. Defaults to 3.0.
+
+    Returns:
+        A NumPy array representing the LBP histogram features.
+    """
     # https://scikit-image.org/docs/stable/auto_examples/features_detection/plot_local_binary_pattern.html
     lbp_image = local_binary_pattern(image, n_points, radius, method='uniform')
 
@@ -28,23 +53,47 @@ def extract_lbp_features(image: np.ndarray, n_points: int = 24, radius: float = 
     return extract_color_features(lbp_image, bins=n_bins, range=(0, n_bins))
 
 
-def extract_glcm_features(image: np.ndarray, distances: list[int] = [1], angles: list[float] = [0, np.pi/4, np.pi/2, 3*np.pi/4], properties: List[Literal['contrast', 'dissimilarity', 'energy', 'homogeneity', 'correlation', 'ASM']] = ['dissimilarity', 'energy', 'homogeneity']) -> np.ndarray:
+def extract_glcm_features(image: np.ndarray, distances: List[int] = [1], angles: List[float] = [0, np.pi / 4, np.pi / 2, 3 * np.pi / 4], properties: List[Literal['contrast', 'dissimilarity', 'energy', 'homogeneity', 'correlation', 'ASM']] = ['dissimilarity', 'energy', 'homogeneity']) -> np.ndarray:
+    """
+    Extracts Gray Level Co-occurrence Matrix (GLCM) features from a grayscale image.
+
+    Args:
+        image: The input grayscale image as a NumPy array.
+        distances: List of pixel pair distances. Defaults to [1].
+        angles: List of pixel pair angles (in radians). Defaults to [0, pi/4, pi/2, 3*pi/4].
+        properties: List of GLCM properties to compute. Defaults to ['dissimilarity', 'energy', 'homogeneity'].
+
+    Returns:
+        A NumPy array representing the concatenated GLCM properties.
+    """
     # https://scikit-image.org/docs/stable/api/skimage.feature.html#skimage.feature.graycoprops
     # https://scikit-image.org/docs/stable/auto_examples/features_detection/plot_glcm.html#sphx-glr-auto-examples-features-detection-plot-glcm-py
     glcm = graycomatrix(image, distances=distances, angles=angles, symmetric=True, normed=True)
     return np.concatenate([graycoprops(glcm, prop).flatten() for prop in properties])
 
 
-def extract_gabor_features(image: np.ndarray) -> list[float]:
+def extract_gabor_features(image: np.ndarray) -> List[float]:
+    """
+    Extracts Gabor filter features from a grayscale image.
+
+    Applies a set of pre-defined Gabor kernels to the image and computes
+    statistical features (local energy, mean amplitude, phase mean/std/skew/kurtosis)
+    from the filter responses.
+
+    Args:
+        image: The input grayscale image as a NumPy array.
+
+    Returns:
+        A list of float values representing the concatenated Gabor features.
+    """
     # TODO: Use log gabor filters to speed up runtime (https://peterkovesi.com/matlabfns/PhaseCongruency/Docs/convexpl.html)
     feats = []
     for kernel in KERNELS:
         response_real = cv2.filter2D(src=image, ddepth=-1, kernel=np.real(kernel))
         response_imag = cv2.filter2D(src=image, ddepth=-1, kernel=np.imag(kernel))
 
-        # Calculate features
         # Source: https://stackoverflow.com/questions/20608458/gabor-feature-extraction
-        response_squared = response_real**2 + response_imag**2
+        response_squared = response_real ** 2 + response_imag ** 2
         local_energy = np.sum(response_squared)
         mean_amplitude = np.mean(np.sqrt(response_squared))
         phase_amplitude = np.atan2(response_imag, response_real).flatten()
@@ -59,8 +108,22 @@ def extract_gabor_features(image: np.ndarray) -> list[float]:
 
 
 # 3D Features
-def extract_principal_plane_features(depth_patch: np.ndarray) -> list[float]:
-    triangle_area = lambda p_1, p_2, p_3: np.linalg.norm(np.cross(p_2 - p_1, p_3 - p_1), axis=2) / 2 
+def extract_principal_plane_features(depth_patch: np.ndarray, eps: float = 1e-6) -> List[float]:
+    """
+    Extracts features related to the principal plane fitting and rugosity of a depth patch.
+
+    Fits a 3rd order polynomial to the depth data, calculates distances to the plane,
+    and computes rugosity (surface area / planar area).
+
+    Args:
+        depth_patch: The input depth patch as a NumPy array.
+        eps: A small value epsilon to avoid divisions by zero.
+
+    Returns:
+        A list of float values representing the statistical properties of depth,
+        polynomial coefficients, angle with vertical, mean/std distance to plane, and rugosity.
+    """
+    triangle_area = lambda p_1, p_2, p_3: np.linalg.norm(np.cross(p_2 - p_1, p_3 - p_1), axis=2) / 2
 
     # Create a grid of x and y coordinates
     h, w = depth_patch.shape
@@ -125,27 +188,41 @@ def extract_principal_plane_features(depth_patch: np.ndarray) -> list[float]:
     mean_distance = np.mean(distances)
     std_distance = np.std(distances)
 
-    # Normal vector components
     n_z = -1
     n_x = coeffs[1]  # Coefficient for x
     n_y = coeffs[2]  # Coefficient for y
 
-    # Calculate angle with repsect to the vertical using the magnitude of the normal vector
-    normal_magnitude = np.sqrt(n_x**2 + n_y**2 + n_z**2)
-    theta = np.degrees(np.arccos(n_z / normal_magnitude))
+    # Calculate angle with respect to the vertical using the magnitude of the linear normal vector
+    normal_magnitude = np.sqrt(n_x ** 2 + n_y ** 2 + n_z ** 2)
+    theta = np.degrees(np.arccos(n_z / (normal_magnitude + eps)))
 
     return [np.std(z), skew(z), kurtosis(z)] + coeffs.tolist() + [theta, mean_distance, std_distance, rugosity]
 
 
-def extract_curvatures_and_surface_normals(depth_patch: np.ndarray) -> list[float]:
+def extract_curvatures_and_surface_normals(depth_patch: np.ndarray, eps: float = 1e-6) -> List[float]:
+    """
+    Extracts mean and standard deviation of principal curvatures, shape index,
+    curvedness, and surface normal angles from a depth patch.
+
+    Calculates first and second derivatives to compute Gaussian (G) and Mean (M)
+    curvatures, then derives principal curvatures (k1, k2), Shape Index (S),
+    and Curvedness (C). Also computes surface normal angles (alpha, beta).
+
+    Args:
+        depth_patch: The input depth patch as a NumPy array.
+        eps: A small value epsilon to avoid divisions by zero.
+
+    Returns:
+        A list of float values representing the mean and std of the calculated features.
+    """
     dx, dy = np.gradient(depth_patch)
     dxdx, dxdy = np.gradient(dx)
     dydx, dydy = np.gradient(dy)
 
-    G = (dxdx * dydy - dxdy * dydx) / (1 + dx**2 + dy**2)**2
-    M = (dydy + dxdx) / (2 * (1 + dx**2 + dy**2)**(1.5))
+    G = (dxdx * dydy - dxdy * dydx) / (1 + dx ** 2 + dy ** 2) ** 2
+    M = (dydy + dxdx) / (2 * (1 + dx ** 2 + dy ** 2) ** (1.5))
 
-    discriminant = np.sqrt(np.maximum(M**2 - G, 0))
+    discriminant = np.sqrt(np.maximum(M ** 2 - G, 0))
     k1 = M + discriminant
     k2 = M - discriminant
 
@@ -156,12 +233,12 @@ def extract_curvatures_and_surface_normals(depth_patch: np.ndarray) -> list[floa
     nx = -dx
     ny = -dy
     nz = np.ones_like(depth_patch)  # Assuming z = depth_patch
-    
+
     # Normalize the surface normals
-    norm = np.sqrt(nx**2 + ny**2 + nz**2)
-    nx /= norm
-    ny /= norm
-    nz /= norm
+    norm = np.sqrt(nx ** 2 + ny ** 2 + nz ** 2)
+    nx /= norm + eps
+    ny /= norm + eps
+    nz /= norm + eps
 
     alpha = np.arctan2(ny, nx)  # Angle in the xy-plane
     beta = np.arctan2(nz, np.sqrt(nx**2 + ny**2))  # Angle from the z-axis
@@ -178,16 +255,32 @@ def extract_curvatures_and_surface_normals(depth_patch: np.ndarray) -> list[floa
     ]
 
 
-def extract_features(images_gray: list[np.ndarray], images_hsv: list[np.ndarray], depth: list[np.ndarray] | None=None) -> tuple[np.ndarray, np.ndarray]:
+def extract_features(images_gray: List[np.ndarray], images_hsv: List[np.ndarray], depth: List[np.ndarray]) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Extracts 2D and 3D features from lists of grayscale, HSV, and optional depth patches.
+
+    Uses multi-threading to parallelize the feature extraction process for different
+    feature types (Color, LBP, GLCM, Gabor, Principal Plane, Curvatures, Symmetry).
+
+    Args:
+        images_gray: A list of grayscale image patches as NumPy arrays.
+        images_hsv: A list of HSV image patches as NumPy arrays.
+        depth: An optional list of depth patches as NumPy arrays. Defaults to None.
+
+    Returns:
+        A tuple containing two NumPy arrays:
+        - The first array contains the concatenated 2D features.
+        - The second array contains the concatenated 3D features (empty if depth is None).
+    """
     logger = lambda name, t, f: (
         print(f"Started processing {name}: {datetime.datetime.now().isoformat()}"),
         f(),
         print(f"Finished processing {name}: {round(time.perf_counter() - t, 2)} seconds")
     )
 
-    features = {}
+    features: dict[str, List[np.ndarray]] = {}
 
-    ts: list[Thread] = []
+    ts: List[Thread] = []
 
     # Add color features
     func = lambda: features.update({'gray': [extract_color_features(img) for img in images_gray]})
@@ -222,10 +315,7 @@ def extract_features(images_gray: list[np.ndarray], images_hsv: list[np.ndarray]
     for t in ts:
         t.join()
 
-    features_2d = np.concatenate([features['gray'], features['hsv'], features['lbp'], features['glcm'], features['gabor']], axis=1)
-
-    features_3d = []
-    if depth is not None:
-        features_3d = np.concatenate([features['principal plane'], features['curvatures'], features['symmetry']], axis=1)
+    features_2d = np.concatenate((features['gray'], features['hsv'], features['lbp'], features['glcm'], features['gabor']), axis=1)
+    features_3d = np.concatenate((features['principal plane'], features['curvatures'], features['symmetry']), axis=1)
 
     return np.nan_to_num(features_2d), np.nan_to_num(features_3d)

@@ -1,5 +1,6 @@
 import numpy as np
-import os, pickle, datetime
+import os, pickle
+from typing import Self, Any
 
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
@@ -8,24 +9,72 @@ from sklearn.kernel_approximation import Nystroem
 
 
 class _ClassificationModel:
-    def __init__(self, model):
+    """
+    Wrapper class to integrate a classification model into a scikit-learn pipeline.
+    This class provides `fit` and `transform` methods compatible with Pipeline,
+    where `transform` is used for prediction.
+    """
+    def __init__(self, model: Any):
+        """
+        Initializes the wrapper with a classification model.
+
+        Args:
+            model: The classification model instance to wrap (e.g., SVC, LogisticRegression).
+        """
         self.model = model
 
-    def fit(self, X: np.ndarray, y: np.ndarray):
+    def fit(self, X: np.ndarray, y: np.ndarray) -> Self:
+        """
+        Fits the underlying classification model to the training data.
+
+        Args:
+            X (np.ndarray): Training features.
+            y (np.ndarray): Training labels.
+
+        Returns:
+            Self: The instance itself.
+        """
         self.model.fit(X, y)
         self.classes_ = self.model.classes_
         return self
 
     def transform(self, X: np.ndarray) -> np.ndarray:
+        """
+        Makes predictions using the fitted model.
+
+        Args:
+            X (np.ndarray): Input features for prediction.
+
+        Returns:
+            np.ndarray: Predicted labels for the input features.
+        """
         return self.model.predict(X)
 
 
 class ClassificationModel:
-    def __init__(self, model, label: str = '', model_dir: str = './models/', model_name: str = '', standardize: bool = True, pca: bool = True, kernel_mapping: bool = True, n_components: int = 100):
+    """
+    A class for creating, training, evaluating, and managing classification models
+    within a scikit-learn pipeline, including preprocessing steps like scaling,
+    kernel mapping, and PCA.
+    """
+    def __init__(self, model: Any, label: str = '', model_dir: str = './models/', model_name: str = '', standardize: bool = True, pca: bool = True, kernel_mapping: bool = True, n_components: int = 100):
+        """
+        Initializes the ClassificationModel with a base model and pipeline options.
+
+        Args:
+            model: The base classification model instance.
+            label (str): An optional label for the model file name.
+            model_dir (str): Directory to save/load models. Creates the directory if it doesn't exist.
+            model_name (str): Base name for the model file.
+            standardize (bool): Whether to include StandardScaler in the pipeline.
+            pca (bool): Whether to include PCA in the pipeline.
+            kernel_mapping (bool): Whether to include Nystroem kernel mapping in the pipeline.
+            n_components (int): Number of components for Nystroem and PCA if used.
+        """
         self.label = label
         self.name = model_name
 
-        self.dir = os.path.join(model_dir, self.name)
+        self.dir = model_dir
         if not os.path.exists(self.dir) or not os.path.isdir(self.dir):
             os.makedirs(self.dir)
 
@@ -45,39 +94,48 @@ class ClassificationModel:
         self.model = Pipeline(pipeline, verbose=True)
 
 
-    def train(self, X_train: np.ndarray, y_train: np.ndarray):
+    def train(self, X_train: np.ndarray, y_train: np.ndarray) -> np.ndarray:
         """
-        Train the SVM model on the provided data.
+        Trains the entire pipeline, including preprocessing steps and the classification model.
 
         Args:
-            X_train (np.array): Training features.
-            y_train (np.array): Training labels.
+            X_train (np.ndarray): Training features.
+            y_train (np.ndarray): Training labels.
+
+        Returns:
+            np.ndarray: The transformed training data after all pipeline steps except the final estimator.
+                        This is the output of the second-to-last step's transform method.
         """
         return self.model.fit_transform(X_train, y_train)
 
 
-    def evaluate(self, X: np.ndarray):
+    def predict(self, X: np.ndarray) -> np.ndarray:
         """
-        Evaluate the SVM model on the given data.
+        Makes predictions on new data using the trained pipeline.
 
         Args:
-            X (np.array): Input features.
+            X (np.ndarray): Input features for prediction.
 
         Returns:
-            np.array: Prediction for y vector
+            np.ndarray: Predicted labels for the input features.
         """
         return self.model.transform(X)
 
 
     def save_model(self) -> None:
         """
-        Save the trained model to a file.
+        Saves the trained pipeline model object to a file.
 
-        Args:
-            filename: Path to save the model file.
+        The filename is generated based on the model name, label,
+        and whether it's a binary classification model.
         """
-        binary = '_binary' if len(self.model.classes_) == 2 else ''
-        filename = f"{self.name}{self.label}{binary}.pkl"
+        if hasattr(self.model.steps[-1][1], 'classes_'):
+            is_binary = len(self.model.steps[-1][1].classes_) == 2
+        else:
+            is_binary = False
+
+        binary_suffix = '_binary' if is_binary else ''
+        filename = f"{self.name}{self.label}{binary_suffix}.pkl"
 
         model_path = os.path.join(self.dir, filename)
         with open(model_path, 'wb') as f:
@@ -91,10 +149,13 @@ class ClassificationModel:
 
     def load_model(self, filename: str) -> None:
         """
-        Load a model from a file.
+        Loads a pipeline model from a file.
 
         Args:
-            filename: Path to load the model file.
+            filename (str): The name of the file to load from the model directory.
+
+        Raises:
+            FileNotFoundError: If the specified model file does not exist.
         """
         model_path = os.path.join(self.dir, filename)
         if os.path.exists(model_path):
