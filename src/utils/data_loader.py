@@ -1,4 +1,4 @@
-from typing import Literal, Optional, Tuple, List
+from typing import Literal, Tuple, List
 import os, cv2, msgpack, gc, time, random
 import numpy as np
 
@@ -17,9 +17,9 @@ def load_data(images_dir: str, depth_dir: str, subset: int = 0) -> Tuple[np.ndar
                       maintaining class distribution based on original counts.
 
     Returns:
-        Tuple[np.ndarray, Optional[np.ndarray], List[str]]: A tuple containing:
+        Tuple[np.ndarray, np.ndarray, List[str]]: A tuple containing:
             - images (np.ndarray): A NumPy array of loaded images.
-            - depths (Optional[np.ndarray]): A NumPy array of loaded depth maps, or None if depth_dir is None or empty.
+            - depths (np.ndarray): A NumPy array of loaded depth maps, or None if depth_dir is None or empty.
                                            Depth maps are loaded as np.double and NaN values are converted to 0.
             - labels (List[str]): A list of class labels corresponding to each loaded image.
     """
@@ -70,14 +70,14 @@ def load_data(images_dir: str, depth_dir: str, subset: int = 0) -> Tuple[np.ndar
     return np.array(images_list), np.array(depths_list), labels
 
 
-def save_features(images_dir: str, depth_dir: Optional[str], features_dir: str, subset: int = 0) -> None:
+def save_features(images_dir: str, depth_dir: str, features_dir: str, subset: int = 0) -> None:
     """
     Loads image and depth data, processes images, extracts features, and saves features and labels
     to msgpack files.
 
     Args:
         images_dir (str): The path to the directory containing image subdirectories.
-        depth_dir (Optional[str]): The path to the directory containing depth map subdirectories.
+        depth_dir (str): The path to the directory containing depth map subdirectories.
                                    If None, only 2D features are extracted/saved.
         features_dir (str): The path to the directory where extracted features and labels will be saved.
                             Creates the directory if it doesn't exist.
@@ -153,10 +153,6 @@ def load_features(features_dir: str, dimension: Literal['2', '25', '3'] = '2') -
         Tuple[np.ndarray, List[str]]: A tuple containing:
             - features (np.ndarray): A NumPy array of loaded features.
             - labels (List[str]): A list of loaded class labels.
-
-    Raises:
-        FileNotFoundError: If the specified feature file for the given dimension does not exist.
-        ValueError: If an invalid dimension is specified.
     """
 
     features = None

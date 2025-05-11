@@ -1,11 +1,45 @@
 import numpy as np
-import cv2, os
+import cv2
+import os
 
 from utils import ADJUST_COOR, extract_features, process_images, superpixel_segmentation, apply_mask
 from classification import SVMModel
 
 
-def run_inference(image_path, depth_path, models_dir, results_dir, uxo_start_code, max_uxo_code, region_size=400, window_size=400, patch_size=128, subdivide_axis=3, threshold=3):
+def run_inference(
+        image_path: str,
+        depth_path: str,
+        models_dir: str,
+        results_dir: str,
+        uxo_start_code: int,
+        max_uxo_code: int,
+        region_size: int = 400,
+        window_size: int = 400,
+        patch_size: int = 128,
+        subdivide_axis: int = 3,
+        threshold: int = 3
+    ) -> None:
+    """
+    Runs the inference process using trained SVM models on an image and its corresponding depth map.
+
+    Performs superpixel segmentation, extracts patches around segment centroids,
+    processes these patches, extracts 2D and 3D features, runs inference using
+    SVM models found in the models directory, and generates prediction masks
+    and highlighted inference images.
+
+    Args:
+        image_path: Path to the input image file.
+        depth_path: Path to the input depth map file.
+        models_dir: Directory containing the trained SVM models.
+        results_dir: Directory to save the inference results (masks and highlighted images).
+        uxo_start_code: The starting integer code representing UXO classes in multi-class models.
+        max_uxo_code: The maximum integer code representing UXO classes in multi-class models.
+        region_size: Parameter for superpixel segmentation (ruler).
+        window_size: Size of the window around centroids for patch extraction.
+        patch_size: Desired size of the extracted and resized image/depth patches.
+        subdivide_axis: Number of subdivisions along each axis within the window for patch extraction.
+        threshold: Minimum number of patch predictions required to consider a superpixel region as positive.
+    """
     img = cv2.imread(image_path)
     depth = cv2.imread(depth_path, cv2.IMREAD_UNCHANGED)
 
@@ -60,7 +94,7 @@ def run_inference(image_path, depth_path, models_dir, results_dir, uxo_start_cod
     for model_name in models:
         model = SVMModel(model_dir=models_dir)
         model.load_model(model_name)
-        
+
         dimension = model.label
         binary_mode = len(model.model.classes_) == 2
 
@@ -70,8 +104,7 @@ def run_inference(image_path, depth_path, models_dir, results_dir, uxo_start_cod
             print(f"Running multi-class classification ({dimension}D) on:\n{image_path}\n")
 
         inference_dir = f"{results_dir}/{'.'.join(model_name.split('.')[:-1])}"
-        if not os.path.exists(inference_dir) or not os.path.isdir(inference_dir):
-            os.makedirs(inference_dir)
+        os.makedirs(inference_dir, exist_ok=True)
 
         if dimension == '3':
             features = features_3d
