@@ -2,8 +2,10 @@ import numpy as np
 import cv2
 import os
 
-from utils import ADJUST_COOR, extract_features, process_images, superpixel_segmentation, apply_mask
-from classification import SVMModel
+from .feature_extraction import extract_features
+from .image_processing import process_images, superpixel_segmentation, apply_mask
+from .dataset_creator import ADJUST_COOR
+from ..classification import SVMModel
 
 
 def run_inference(
