@@ -9,5 +9,5 @@
 - [ ] Prepare the JOSS paper:
     - [ ] Changes compared to shihav's implementation
     - [ ] Repo structure and technical flow chart
-- [ ] Train the model on synthetic datasets -- one only containing UXOs and another containing UXOs and man-made objects (clutter)
+- [x] Train the model on synthetic datasets -- one only containing UXOs and another containing UXOs and man-made objects (clutter)
 - [ ] Train the models on the new plots (also on man-made objects?)

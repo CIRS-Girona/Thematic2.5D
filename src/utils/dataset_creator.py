@@ -6,10 +6,9 @@ from concurrent.futures import ThreadPoolExecutor
 ADJUST_COOR = lambda c, r, rnge: (0, 2*r) if c - r < 0 else (rnge[1] - 1 - 2*r, rnge[1] - 1) if c + r >= rnge[1] else (c - r, c + r)
 
 
-def process_data(image, depth, mask, indices, bg_max, dataset_dir, prefix, uxo_threshold, invalid_threshold, window_size, patch_size, angles):
+def process_data(image, depth, mask, indices, dataset_dir, prefix, uxo_threshold, invalid_threshold, window_size, patch_size, angles):
     print("Started thread")
 
-    bg_count = 0
     w, h = mask.shape
     t, m, d = None, None, None
     for i, (c_y, c_x) in enumerate(indices):
@@ -38,7 +37,7 @@ def process_data(image, depth, mask, indices, bg_max, dataset_dir, prefix, uxo_t
         d = np.astype(255 * d, np.uint8)
 
         if np.sum(m > 0)/m.size >= uxo_threshold:
-            uxo_number = np.sort(np.unique(m))[-1]
+            uxo_number = int(np.sort(np.unique(m))[-1])
 
             if not os.path.exists(f"{dataset_dir}/2D/{uxo_number}/") or not os.path.isdir(f"{dataset_dir}/2D/{uxo_number}/"):
                 os.mkdir(f"{dataset_dir}/2D/{uxo_number}/")
@@ -55,10 +54,9 @@ def process_data(image, depth, mask, indices, bg_max, dataset_dir, prefix, uxo_t
 
             del t_rot, d_rot
             gc.collect()
-        elif np.all(m == 0) and bg_count < bg_max:
+        elif np.all(m == 0):
             cv2.imwrite(f"{dataset_dir}/2D/background/{prefix}-{i}.png", t)
             cv2.imwrite(f"{dataset_dir}/3D/background/{prefix}-{i}.png", d)
-            bg_count += 1
 
 
 def create_dataset(images_path, depths_path, masks_path, dataset_dir, uxo_start_code, invalid_code, prefix='', bg_per_img=20_000, thread_count=64, uxo_sample_rate=0.01, uxo_threshold=0.4, invalid_threshold=0.01, window_size=400, patch_size=128, angles=(0, 90, 180, 270)):
@@ -68,7 +66,18 @@ def create_dataset(images_path, depths_path, masks_path, dataset_dir, uxo_start_
 
     with ThreadPoolExecutor(max_workers=thread_count) as exe:
         for label in labels:
-            image = cv2.imread(f"{images_path}/{label}.jpg", cv2.IMREAD_UNCHANGED)
+            image_path = f"{images_path}/{label}"
+
+            if os.path.exists(f"{image_path}.jpg") and os.path.isfile(f"{image_path}.jpg"):
+                image = cv2.imread(f"{image_path}.jpg", cv2.IMREAD_UNCHANGED)
+            elif os.path.exists(f"{image_path}.png") and os.path.isfile(f"{image_path}.png"):
+                image = cv2.imread(f"{image_path}.png", cv2.IMREAD_UNCHANGED)
+            else:
+                raise FileNotFoundError("Images are neither in jpg or png format")
+            
+            if image is None:
+                raise FileExistsError("Couldn't read the image file")
+
             depth = cv2.imread(f"{depths_path}/{label}.png", cv2.IMREAD_UNCHANGED)
 
             if image is None or depth is None:
@@ -76,7 +85,7 @@ def create_dataset(images_path, depths_path, masks_path, dataset_dir, uxo_start_
                 gc.collect()
                 continue
 
-            mask = np.astype(cv2.imread(f"{masks_path}/{label}.png", cv2.IMREAD_UNCHANGED), np.int32)
+            mask = cv2.imread(f"{masks_path}/{label}.png", cv2.IMREAD_UNCHANGED).astype(np.float32)
 
             # Set invalid pixels to None
             mask[mask == invalid_code] = None
@@ -97,7 +106,7 @@ def create_dataset(images_path, depths_path, masks_path, dataset_dir, uxo_start_
             # Oversample so that there are enough valid patches
             bg_indices = np.where(mask == 0)
             bg_indices = list(zip(bg_indices[0], bg_indices[1]))
-            bg_indices = random.sample(bg_indices, 2 * bg_per_img) if len(bg_indices) > 2 * bg_per_img else bg_indices
+            bg_indices = random.sample(bg_indices, bg_per_img)
 
             indices = uxo_indices + bg_indices
 
@@ -110,7 +119,6 @@ def create_dataset(images_path, depths_path, masks_path, dataset_dir, uxo_start_
                 depth,
                 mask,
                 indices,
-                bg_per_img,
                 dataset_dir,
                 f"{label}-{prefix}",
                 uxo_threshold,
