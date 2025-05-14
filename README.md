@@ -7,7 +7,7 @@ This project implements a baseline model for the detection of Underwater Militar
 The primary objectives of this project are to:
 
 * Replicate the findings of Gleason et al. (2015) using Python-based tools.
-* Compare the performance of SVM models trained on 2D image data, 3D depth data, and combined 2.5D data for UWMM detection.
+* Compare the performance of SVM models trained on 2D image data, 3D depth data, and combined texture and depth data (2.5D) for UWMM detection.
 * Establish a modular framework for building datasets, training classification models, and conducting inference for UWMM detection tasks.
 
 ## Key Features
