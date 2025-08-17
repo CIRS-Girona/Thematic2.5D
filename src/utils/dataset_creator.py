@@ -5,6 +5,7 @@ import gc
 import random
 from concurrent.futures import ThreadPoolExecutor
 from typing import Tuple, List, Optional, Callable
+from tqdm import tqdm
 
 
 ADJUST_COOR: Callable[[int, int, Tuple[int, int]], Tuple[int, int]] = lambda c, r, rnge: (0, 2 * r) if c - r < 0 else (rnge[1] - 1 - 2 * r, rnge[1] - 1) if c + r >= rnge[1] else (c - r, c + r)
@@ -177,7 +178,7 @@ def create_dataset(
     labels = ['.'.join(f.split('.')[:-1]) for f in mask_files if os.path.isfile(os.path.join(masks_path, f))]
 
     with ThreadPoolExecutor(max_workers=thread_count) as exe:
-        for label in labels:
+        for label in tqdm(labels):
             image_path_jpg = os.path.join(images_path, f"{label}.jpg")
             image_path_png = os.path.join(images_path, f"{label}.png")
 

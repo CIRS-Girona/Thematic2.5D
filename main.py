@@ -1,4 +1,5 @@
 import os, yaml
+from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor
 
 from src.utils import create_dataset, train_model, run_inference
@@ -18,7 +19,7 @@ if __name__ == "__main__":
     features_dir = f"{source_dir}/{config['directories']['features_dir']}"
 
     if not os.path.exists(input_dir) or not os.path.isdir(input_dir):
-        print("The tiles folder doesn't exist. Please create the tiles folder as explained in the README file.")
+        print("The images folder doesn't exist. Please create the images folder as explained in the README file.")
         exit()
 
     # Create directories if they don't exist
@@ -73,7 +74,7 @@ if __name__ == "__main__":
 
         with ThreadPoolExecutor(max_workers=config['run_inference']['thread_count']) as exe:
             
-            for img in os.listdir(config['run_inference']['depth_path']):
+            for img in tqdm(os.listdir(config['run_inference']['depth_path'])):
                 label = '.'.join(img.split('.')[:-1])
 
                 image_path = f"{config['run_inference']['image_path']}/{label}"

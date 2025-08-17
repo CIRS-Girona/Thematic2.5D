@@ -12,12 +12,12 @@ directories:
 
 create_dataset:
   enabled: false                     # Set to `true` to enable dataset creation.
-  bg_per_img: 500                    # Maximum number of background patches to extract per input mosaic.
+  bg_per_img: 500                    # Maximum number of background patches to extract per input image.
   thread_count: 128                  # Number of threads to use for parallel processing during dataset creation.
   uxo_sample_rate: 0.001             # Fraction of UXO pixels to sample as centers for potential UXO patches.
   uxo_threshold: 0.4                 # Minimum fraction of UXO pixels required within a window for it to be labeled as a UXO patch.
   invalid_threshold: 0.01            # Maximum fraction of invalid pixels (e.g., masked out areas) allowed in a patch; patches exceeding this are skipped.
-  window_size: 400                   # Size (in pixels) of the square window extracted from the original mosaic around a sample point.
+  window_size: 400                   # Size (in pixels) of the square window extracted from the original image around a sample point.
   patch_size: 128                    # Size (in pixels) to which the extracted window is resized to create the final patch.
   angles: [0, 90, 180, 270]          # Angles (in degrees) to rotate UXO patches for data augmentation.
 
