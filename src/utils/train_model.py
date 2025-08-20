@@ -52,7 +52,7 @@ def train_model(dataset_dir: str, features_dir: str, models_dir: str, results_di
     model.train(X_train, y_train)
     model.save_model()
 
-    y_pred = model.evaluate(X_test)
+    y_pred = model.predict(X_test)
 
     if binary_mode:
         datafile_name = f"{model.name}_{dimension}D_binary"

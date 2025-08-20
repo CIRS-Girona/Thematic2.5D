@@ -62,8 +62,6 @@ def process_data(
         angles (Tuple[int]): A tuple of angles (in degrees) for rotating UXO patches
                                   to create augmented samples.
     """
-    print("Started thread")
-
     h, w = mask.shape
     for i, (c_y, c_x) in enumerate(indices):
         t, m, d = None, None, None
@@ -122,8 +120,6 @@ def process_data(
             del t_resized, d_resized
             gc.collect()
 
-    print(f"Finished thread for prefix: {prefix}")
-
 
 def create_dataset(
     images_path: str,
@@ -172,65 +168,71 @@ def create_dataset(
         angles (Tuple[int]): A tuple of angles (in degrees) for rotating UXO patches
                                   to create augmented samples.
     """
+    def _create_dataset(label: str) -> None:
+        image_path_jpg = os.path.join(images_path, f"{label}.jpg")
+        image_path_png = os.path.join(images_path, f"{label}.png")
+
+        image: Optional[np.ndarray] = None
+        if os.path.exists(image_path_jpg) and os.path.isfile(image_path_jpg):
+            image = cv2.imread(image_path_jpg, cv2.IMREAD_UNCHANGED)
+        elif os.path.exists(image_path_png) and os.path.isfile(image_path_png):
+            image = cv2.imread(image_path_png, cv2.IMREAD_UNCHANGED)
+        else:
+            print(f"Warning: Image file not found for label {label} in {images_path}. Skipping.")
+            return
+
+        depth = cv2.imread(os.path.join(depths_path, f"{label}.png"), cv2.IMREAD_UNCHANGED)
+        mask = cv2.imread(os.path.join(masks_path, f"{label}.png"), cv2.IMREAD_UNCHANGED)
+
+        if image is None or depth is None or mask is None:
+            print(f"Warning: Couldn't read image file, depth map or mask file for label {label}. Skipping.")
+            return
+
+        mask = mask.astype(np.float32)
+        mask[mask == invalid_code] = None
+        mask[depth == 0] = None
+        mask[mask < uxo_start_code] = 0
+
+        uxo_indices = np.where(mask > 0)
+        uxo_indices_list = list(zip(uxo_indices[0], uxo_indices[1])) # Convert to list of (y, x) tuples
+
+        uxo_indices_sampled = random.sample(uxo_indices_list, int(len(uxo_indices_list) * uxo_sample_rate))
+
+        # Background indices are where mask is 0 and not NaN
+        bg_indices = np.where(mask == 0)
+        bg_indices_list = list(zip(bg_indices[0], bg_indices[1])) # Convert to list of (y, x) tuples
+
+        bg_indices_sampled = random.sample(bg_indices_list, min(bg_per_img, len(bg_indices_list)))
+
+        del uxo_indices, uxo_indices_list, bg_indices, bg_indices_list
+        gc.collect()
+
+        # Processing task for this image
+        process_data(
+            image,
+            depth,
+            mask,
+            uxo_indices_sampled + bg_indices_sampled,
+            dataset_dir,
+            f"{label}-{prefix}", # Use label and prefix for unique filename prefix
+            uxo_threshold,
+            invalid_threshold,
+            window_size,
+            patch_size,
+            angles
+        )
+
+        # Delete image, mask, and depth after submitting to free up memory
+        del uxo_indices_sampled, bg_indices_sampled, image, mask, depth
+        gc.collect()
+
     print(f"Started processing dataset {prefix}")
 
     mask_files = os.listdir(masks_path)
     labels = ['.'.join(f.split('.')[:-1]) for f in mask_files if os.path.isfile(os.path.join(masks_path, f))]
 
     with ThreadPoolExecutor(max_workers=thread_count) as exe:
-        for label in tqdm(labels):
-            image_path_jpg = os.path.join(images_path, f"{label}.jpg")
-            image_path_png = os.path.join(images_path, f"{label}.png")
-
-            image: Optional[np.ndarray] = None
-            if os.path.exists(image_path_jpg) and os.path.isfile(image_path_jpg):
-                image = cv2.imread(image_path_jpg, cv2.IMREAD_UNCHANGED)
-            elif os.path.exists(image_path_png) and os.path.isfile(image_path_png):
-                image = cv2.imread(image_path_png, cv2.IMREAD_UNCHANGED)
-            else:
-                print(f"Warning: Image file not found for label {label} in {images_path}. Skipping.")
-                continue
-
-            depth = cv2.imread(os.path.join(depths_path, f"{label}.png"), cv2.IMREAD_UNCHANGED)
-            mask = cv2.imread(os.path.join(masks_path, f"{label}.png"), cv2.IMREAD_UNCHANGED)
-
-            if image is None or depth is None or mask is None:
-                print(f"Warning: Couldn't read image file, depth map or mask file for label {label}. Skipping.")
-                continue
-
-            mask = mask.astype(np.float32)
-            mask[mask == invalid_code] = None
-            mask[depth == 0] = None
-            mask[mask < uxo_start_code] = 0
-
-            uxo_indices = np.where(mask > 0)
-            uxo_indices_list = list(zip(uxo_indices[0], uxo_indices[1])) # Convert to list of (y, x) tuples
-
-            uxo_indices_sampled = random.sample(uxo_indices_list, int(len(uxo_indices_list) * uxo_sample_rate))
-
-            # Background indices are where mask is 0 and not NaN
-            bg_indices = np.where(mask == 0)
-            bg_indices_list = list(zip(bg_indices[0], bg_indices[1])) # Convert to list of (y, x) tuples
-
-            bg_indices_sampled = random.sample(bg_indices_list, min(bg_per_img, len(bg_indices_list)))            
-
-            # Submit the processing task for this image to the thread pool
-            exe.submit(
-                process_data,
-                image,
-                depth,
-                mask,
-                uxo_indices_sampled + bg_indices_sampled,
-                dataset_dir,
-                f"{label}-{prefix}", # Use label and prefix for unique filename prefix
-                uxo_threshold,
-                invalid_threshold,
-                window_size,
-                patch_size,
-                angles
-            )
-
-            # Delete image, mask, and depth after submitting to free up memory
-            del uxo_indices, uxo_indices_list, uxo_indices_sampled, bg_indices, bg_indices_list, bg_indices_sampled
-            del image, mask, depth
-            gc.collect()
+        list(tqdm(
+            exe.map(_create_dataset, labels),
+            total=len(labels)
+        ))

@@ -11,12 +11,11 @@ if __name__ == "__main__":
         config = yaml.safe_load(f)
 
     # Set directories from config
-    source_dir = config['directories']['source_dir']
-    input_dir = f"{source_dir}/{config['directories']['input_dir']}"
-    dataset_dir = f"{source_dir}/{config['directories']['dataset_dir']}"
-    results_dir = f"{source_dir}/{config['directories']['results_dir']}"
-    models_dir = f"{source_dir}/{config['directories']['models_dir']}"
-    features_dir = f"{source_dir}/{config['directories']['features_dir']}"
+    input_dir = config['directories']['input_dir']
+    dataset_dir = config['directories']['dataset_dir']
+    results_dir = config['directories']['results_dir']
+    models_dir = config['directories']['models_dir']
+    features_dir = config['directories']['features_dir']
 
     if not os.path.exists(input_dir) or not os.path.isdir(input_dir):
         print("The images folder doesn't exist. Please create the images folder as explained in the README file.")
@@ -36,9 +35,9 @@ if __name__ == "__main__":
                 continue
 
             create_dataset(
-                f"{input_dir}/{dtset}/images",
-                f"{input_dir}/{dtset}/depths",
-                f"{input_dir}/{dtset}/masks",
+                f"{input_dir}/{dtset}/images/",
+                f"{input_dir}/{dtset}/depths/",
+                f"{input_dir}/{dtset}/masks/",
                 dataset_dir=dataset_dir,
                 uxo_start_code=config['uxo_start_code'],
                 invalid_code=config['invalid_code'],
@@ -72,30 +71,34 @@ if __name__ == "__main__":
     if config['run_inference']['enabled']:
         print("Running inference...")
 
+        args = []
+        for img in os.listdir(config['run_inference']['depth_path']):
+            label = '.'.join(img.split('.')[:-1])
+
+            image_path = f"{config['run_inference']['image_path']}/{label}"
+            if os.path.exists(f"{image_path}.jpg") and os.path.isfile(f"{image_path}.jpg"):
+                image_path = f"{image_path}.jpg"
+            elif os.path.exists(f"{image_path}.png") and os.path.isfile(f"{image_path}.png"):
+                image_path = f"{image_path}.png"
+            else:
+                raise FileNotFoundError("Images are neither in jpg or png format")
+
+            args.append((
+                image_path,
+                f"{config['run_inference']['depth_path']}/{label}.png",
+                models_dir,
+                results_dir,
+                config['uxo_start_code'],
+                config['max_uxo_code'],
+                config['run_inference']['region_size'],
+                config['run_inference']['window_size'],
+                config['run_inference']['patch_size'],
+                config['run_inference']['subdivide_axis'],
+                config['run_inference']['threshold'],
+            ))
+
         with ThreadPoolExecutor(max_workers=config['run_inference']['thread_count']) as exe:
-            
-            for img in tqdm(os.listdir(config['run_inference']['depth_path'])):
-                label = '.'.join(img.split('.')[:-1])
-
-                image_path = f"{config['run_inference']['image_path']}/{label}"
-                if os.path.exists(f"{image_path}.jpg") and os.path.isfile(f"{image_path}.jpg"):
-                    image_path = f"{image_path}.jpg"
-                elif os.path.exists(f"{image_path}.png") and os.path.isfile(f"{image_path}.png"):
-                    image_path = f"{image_path}.png"
-                else:
-                    raise FileNotFoundError("Images are neither in jpg or png format")
-
-                exe.submit(
-                    run_inference,
-                    image_path,
-                    f"{config['run_inference']['depth_path']}/{label}.png",
-                    models_dir,
-                    results_dir,
-                    config['uxo_start_code'],
-                    config['max_uxo_code'],
-                    config['run_inference']['region_size'],
-                    config['run_inference']['window_size'],
-                    config['run_inference']['patch_size'],
-                    config['run_inference']['subdivide_axis'],
-                    config['run_inference']['threshold'],
-                )
+            list(tqdm(
+                exe.map(lambda a: run_inference(*a), args),
+                total=len(args)
+            ))
