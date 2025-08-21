@@ -3,11 +3,11 @@ uxo_start_code: 5
 max_uxo_code: 8
 
 directories:
-  input_dir: './temp/data1'          # Directory containing the input tiled data (images, depths, masks).
-  dataset_dir: './data/dataset/24mm/'        # Directory where the processed dataset patches will be saved.
-  results_dir: './data/results/24mm/'        # Directory to save classification reports and inference output images.
-  models_dir: './data/models/24mm/'          # Directory to save trained model files.
-  features_dir: './data/features/24mm/'      # Directory to save extracted features.
+  input_dir: './temp/data'          # Directory containing the input tiled data (images, depths, masks).
+  dataset_dir: './data/dataset/18mm/'        # Directory where the processed dataset patches will be saved.
+  results_dir: './data/results/18mm/'        # Directory to save classification reports and inference output images.
+  models_dir: './data/models/18mm/'          # Directory to save trained model files.
+  features_dir: './data/features/18mm/'      # Directory to save extracted features.
 
 create_dataset:
   enabled: false                     # Set to `true` to enable dataset creation.
@@ -31,12 +31,16 @@ train_model:
                                      # '2' for 2D (image), '3' for 3D (depth), '25' for 2.5D (both).
 
 run_inference:
-  enabled: true                      # Set to `true` to enable inference.
-  image_path: temp/data1/24mm/images            # Path to the input image directory for inference.
-  depth_path: temp/data1/24mm/depths            # Path to the input depth map directory for inference.
+  enabled: false                      # Set to `true` to enable inference.
+  image_path: temp/data1/18mm/images            # Path to the input image directory for inference.
+  depth_path: temp/data1/18mm/depths            # Path to the input depth map directory for inference.
   region_size: 400                   # Parameter for superpixel segmentation (average size of superpixels).
   window_size: 400                   # Size of the window extracted around superpixel centroids/subdivisions for feature extraction during inference.
   patch_size: 128                    # Size to which the extracted inference window is resized.), '25' for 2.5D (both).
   subdivide_axis: 3                  # Number of subdivisions along each axis within the main window around a superpixel centroid. Used for neighbor polling.
   threshold: 4                       # Minimum number of positive predictions within the subdivisions of a superpixel region required to classify the region as UXO.
   thread_count: 128                  # Number of threads to use for parallel processing during dataset creation.
+
+evaluate_results:
+  enabled: true                      # Set to `true` to evaluate inference results.
+  mask_path: temp/data/18mm/masks    # Path to the input masks directory.

@@ -1,8 +1,9 @@
-import os, yaml
+import os, yaml, cv2, gc
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor
+import numpy as np
 
-from src.utils import create_dataset, train_model, run_inference
+from src.utils import create_dataset, train_model, run_inference, meanIoU
 
 
 if __name__ == "__main__":
@@ -102,3 +103,39 @@ if __name__ == "__main__":
                 exe.map(lambda a: run_inference(*a), args),
                 total=len(args)
             ))
+
+    if config['evaluate_results']['enabled']:
+        print("Evaluating results...")
+
+        for dir in os.listdir(results_dir):
+            curr_dir = f"{results_dir}/{dir}"
+
+            if not os.path.isdir(curr_dir):
+                continue
+
+            print(f"Evaluating results for {dir}")
+
+            miou_scores = {}
+            for mask in tqdm(os.listdir(config['evaluate_results']['mask_path'])):
+                label = "".join(mask.split('.')[:-1])
+
+                if not os.path.exists(f"{curr_dir}/{label}_mask.png"):
+                    continue
+
+                mask_gt = cv2.imread(f"{config['evaluate_results']['mask_path']}/{mask}", cv2.IMREAD_UNCHANGED)
+                mask_result = cv2.imread(f"{curr_dir}/{label}_mask.png", cv2.IMREAD_UNCHANGED)
+
+                mask_gt[mask_gt < config['uxo_start_code']] = 0
+                if "binary" in dir:
+                    mask_gt[mask_gt > 0] = 1
+
+                miou_scores[label] = meanIoU(mask_gt, mask_result)
+
+                del mask_gt, mask_result
+                gc.collect()
+
+            with open(f"{curr_dir}/meanIoU.txt", 'w') as f:
+                f.write(f"Average mIoU score: {np.mean(tuple(miou_scores.values()))}\n\n")
+                
+                for label, miou_score in miou_scores.items():
+                    f.write(f"{label}: {miou_score}\n")
