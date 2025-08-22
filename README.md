@@ -1,6 +1,6 @@
 # Baseline Model for Underwater Military Munitions (UWMM) Detection
 
-This project implements a baseline model for the detection of Underwater Military Munitions (UWMM), replicating the methodology presented in the paper "Improved supervised classification of underwater military munitions using height features derived from optical imagery" by Gleason et al. (2015). The implementation utilizes Python frameworks to process and analyze different data modalities, including 2D imagery, 3D depth data, and a combined 2.5D representation, to evaluate their effectiveness in identifying Unexploded Ordnance (UXO) in underwater environments.
+This project implements a baseline model for the detection of Under-Water Military Munitions (UWMM), replicating the methodology presented in the paper "Improved supervised classification of underwater military munitions using height features derived from optical imagery" by Gleason et al. (2015). This Python implementation is used to process and analyze different data modalities, including 2D imagery, 3D depth data, and a combined 2.5D representation, to evaluate their effectiveness in identifying Unexploded Ordnance (UXO) in underwater environments.
 
 ## Purpose
 
@@ -12,12 +12,11 @@ The primary objectives of this project are to:
 
 ## Key Features
 
-* **Dataset Generation:** Processes tiled raw image, depth, and mask data to create training patches labeled as 'uxo' or 'background'.
+* **Dataset Generation:** Processes original image, depth, and mask data to create training patches.
 * **Multi-Modal Data Handling:** Supports the use of 2D imagery, 3D depth data, and combined 2.5D data for model training and evaluation.
 * **SVM Classification:** Implements SVM models for classifying potential UWMM based on extracted features.
 * **Trainable Models:** Provides functionality to train classification models on the generated dataset.
 * **Inference Pipeline:** Enables the application of trained models to new underwater imagery for UXO detection.
-* **Configuration-Driven Workflow:** Utilizes a `config.yaml` file to manage project settings and workflow execution.
 
 ## Getting Started
 
@@ -25,32 +24,50 @@ This section outlines the steps required to use this project. Ensure you have th
 
 ### 1. Dataset Creation
 
-TODO: Change
-
-This step involves processing raw tiled data to generate training patches.
+This step involves processing the original image/depth/mask data to generate training patches.
 
 **Input Data Format:**
 
-The project expects raw data to be organized as tiles within a directory structure specified by `tiles_dir` in the `config.yaml` file. Within each dataset folder under `tiles_dir`, the following subdirectories are expected:
+The project expects original data to be organized as images within a directory structure specified by `input_dir` in the `config.yaml` file. The `input_dir` directory is expected to host one or more datasets organized as folders. Within each dataset folder under `input_dir`, the following subdirectories are expected:
 
-* `images`: Contains tiled 2D imagery.
-* `depths`: Contains corresponding tiled depth maps.
-* `masks`: Contains corresponding masks indicating the location of potential UXOs.
+* `images`: Contains original 2D imagery.
+* `depths`: Contains corresponding depth maps, formatted as 1-channel, 16-bit PNGs.
+* `masks`: Contains corresponding masks indicating the location of potential UXOs, formatted as 1-channel, 8-bit PNGs.
+
+***Example:***
+
+```
+input_dir/
+└── dataset_1/
+    ├── images/
+    │   ├── img_01.jpg
+    │   ├── img_02.jpg
+    │   └── ...
+    ├── depths/
+    │   ├── img_01.png
+    │   ├── img_02.png
+    │   └── ...
+    └── masks/
+        ├── img_01.png
+        ├── img_02.png
+        └── ...
+└── dataset_2/
+    ├── images/
+    │   └── ...
+    ├── depths/
+    │   └── ...
+    └── masks/
+        └── ...
+└── ...
+```
 
 **File Naming Convention:**
 
-Image files within each subdirectory should have consistent naming patterns that allow for matching corresponding tiles across different modalities. The filename is expected to end with the row and column index of the tile within the larger mosaic (e.g., `plot1_18_240424_t2_ortho_r00_c01.png`).
-
-**Configuration:**
-
-1.  Navigate to the project directory.
-2.  Open the `config.yaml` file.
-3.  Under the `create_dataset` section, set the `enabled` flag to `true`.
-4.  Configure other parameters within the `create_dataset` section, such as the `tiles_dir` and `dataset_dir`, according to your data organization.
+Data files within each subdirectory should have the same exact name - excluding the extension - to allow for data matching across different modalities.
 
 **Output:**
 
-Processed image patches (both 2D and 3D representations) will be saved in the `dataset_dir` under subfolders labeled 'uxo' and 'background'.
+Processed image patches (both 2D and 3D representations) will be saved in the `dataset_dir` under subfolders labeled 'background' and the different class names present in the mask.
 
 ### 2. Model Training
 
@@ -60,17 +77,11 @@ This step focuses on extracting features from the generated dataset patches and 
 
 The training process utilizes the dataset created in the previous step, located in the `dataset_dir`. Optionally, if `use_saved_features` is set to `true` in the `config.yaml`, pre-extracted features from the `features_dir` will be loaded.
 
-**Configuration:**
-
-1.  Open the `config.yaml` file.
-2.  Under the `train_model` section, set the `enabled` flag to `true`.
-3.  Configure parameters within the `train_model` section, paying particular attention to the `dimension` parameter, which should be set to `'2'`, `'3'`, or `'25'` to specify the data modality for training.
-
 **Output:**
 
 * Extracted features (for 2D, 3D, or 2.5D data) will be saved in the `features_dir`.
 * The trained SVM model will be saved as a file in the `models_dir`.
-* A classification report summarizing the model's performance will be saved in the `results_dir`.
+* A classification report summarizing the model's performance will be saved in the `results_dir` along with the confusion matrix.
 
 ### 3. Inference
 
@@ -80,19 +91,26 @@ This step involves using a trained model to detect potential UXOs in a new, unse
 
 The inference process requires the following inputs, specified in the `config.yaml` file under the `run_inference` section:
 
-* `image_path`: The path to the new 2D image.
-* `depth_path`: The path to the corresponding depth map.
-* `model_name`: The filename of the trained model located in the `models_dir`.
-
-**Configuration:**
-
-1.  Open the `config.yaml` file.
-2.  Under the `run_inference` section, set the `enabled` flag to `true`.
-3.  Specify the `image_path`, `depth_path`, `model_name`, and the desired `output_file` name. Configure any other relevant inference parameters as needed.
+* `image_path`: The path to the images folder.
+* `depth_path`: The path to the corresponding depth maps folder.
 
 **Output:**
 
-An output image with detected UXOs highlighted will be saved in the `results_dir` with the filename specified by the `output_file` parameter.
+A folder will be created for each trained model inside of `results_dir` where the inference image along with the generated mask will be saved.
+
+### 4. Evaluate Results
+
+This step calculates and saves the mean Intersection over Union (mIoU) for each inferred image, providing a quantitative measure of each model's performance.
+
+**Input:**
+
+The evaluation process requires the following inputs, specified in the `config.yaml` file under the `evaluate_results` section:
+
+* `mask_path`: The path to the directory containing the ground truth masks.
+
+**Output:**
+
+The evaluation results will be saved in a file named `meanIoU.txt` located within the directory of each model under `results_dir`. This file will contain the mIoU score for each individual image as well as the average mIoU across all images.
 
 ## Results
 
