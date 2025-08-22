@@ -129,4 +129,4 @@ def run_inference(
         else:
             inference = apply_mask(img, uxo_mask, mode='highlight')
 
-        cv2.imwrite(f"{inference_dir}/{img_label}.png", inference)
+        cv2.imwrite(f"{inference_dir}/{img_label}.jpg", inference)

@@ -71,5 +71,5 @@ def train_model(dataset_dir: str, features_dir: str, models_dir: str, results_di
 
     cmd.plot()
     plt.tight_layout()
-    plt.savefig(f"{results_dir}/{datafile_name}.png")
+    plt.savefig(f"{results_dir}/{datafile_name}.jpg")
     plt.close('all')

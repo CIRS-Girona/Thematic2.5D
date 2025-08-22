@@ -132,24 +132,24 @@ The following table provides visual examples of the model outputs for different 
     <th style="text-align: center;">2.5D</th>
   </tr>
   <tr>
-    <td><img src="assets/2D_plot1_r02_c05.png" alt="2D Result 1"></td>
-    <td><img src="assets/3D_plot1_r02_c05.png" alt="3D Result 1"></td>
-    <td><img src="assets/25D_plot1_r02_c05.png" alt="2.5D Result 1"></td>
+    <td><img src="assets/2D_plot1_r02_c05.jpg" alt="2D Result 1"></td>
+    <td><img src="assets/3D_plot1_r02_c05.jpg" alt="3D Result 1"></td>
+    <td><img src="assets/25D_plot1_r02_c05.jpg" alt="2.5D Result 1"></td>
   </tr>
  <tr>
-    <td><img src="assets/2D_plot1_r03_c03.png" alt="2D Result 2"></td>
-    <td><img src="assets/3D_plot1_r03_c03.png" alt="3D Result 2"></td>
-    <td><img src="assets/25D_plot1_r03_c03.png" alt="2.5D Result 2"></td>
+    <td><img src="assets/2D_plot1_r03_c03.jpg" alt="2D Result 2"></td>
+    <td><img src="assets/3D_plot1_r03_c03.jpg" alt="3D Result 2"></td>
+    <td><img src="assets/25D_plot1_r03_c03.jpg" alt="2.5D Result 2"></td>
   </tr>
   <tr>
-    <td><img src="assets/2D_plot3_r03_c05.png" alt="2D Result 3"></td>
-    <td><img src="assets/3D_plot3_r03_c05.png" alt="3D Result 3"></td>
-    <td><img src="assets/25D_plot3_r03_c05.png" alt="2.5D Result 3"></td>
+    <td><img src="assets/2D_plot3_r03_c05.jpg" alt="2D Result 3"></td>
+    <td><img src="assets/3D_plot3_r03_c05.jpg" alt="3D Result 3"></td>
+    <td><img src="assets/25D_plot3_r03_c05.jpg" alt="2.5D Result 3"></td>
   </tr>
   <tr>
-    <td><img src="assets/2D_plot3_r04_c04.png" alt="2D Result 4"></td>
-    <td><img src="assets/3D_plot3_r04_c04.png" alt="3D Result 4"></td>
-    <td><img src="assets/25D_plot3_r04_c04.png" alt="2.5D Result 4"></td>
+    <td><img src="assets/2D_plot3_r04_c04.jpg" alt="2D Result 4"></td>
+    <td><img src="assets/3D_plot3_r04_c04.jpg" alt="3D Result 4"></td>
+    <td><img src="assets/25D_plot3_r04_c04.jpg" alt="2.5D Result 4"></td>
   </tr>
 </table>
 
