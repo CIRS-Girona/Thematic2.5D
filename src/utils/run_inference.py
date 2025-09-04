@@ -47,7 +47,6 @@ def run_inference(
 
     img_label = '.'.join(image_path.split('/')[-1].split('.')[:-1])
 
-    print("Applying Superpixel Segmentation")
     labels, centroids = superpixel_segmentation(img, ruler=1, region_size=region_size)
 
     # Loop over each centroid
@@ -86,8 +85,6 @@ def run_inference(
                 # Store corresponding label
                 patches.append(labels[c_x, c_y])
 
-    print("Processing patches")
-
     patches = np.array(patches)
     gray_images, hsv_images = process_images(imgs)
     features_2d, features_3d = extract_features(gray_images, hsv_images, depths)
@@ -100,11 +97,6 @@ def run_inference(
         dimension = model.label
         binary_mode = len(model.model.classes_) == 2
 
-        if binary_mode:
-            print(f"Running binary classification ({dimension}D) on:\n{image_path}\n")
-        else:
-            print(f"Running multi-class classification ({dimension}D) on:\n{image_path}\n")
-
         inference_dir = f"{results_dir}/{'.'.join(model_name.split('.')[:-1])}"
         os.makedirs(inference_dir, exist_ok=True)
 
@@ -115,9 +107,7 @@ def run_inference(
         else:
             features = np.concatenate((features_2d, features_3d), axis=1)
 
-        print("Running inference")
-
-        y_pred = model.evaluate(features)
+        y_pred = model.predict(features)
 
         uxo_mask = np.zeros_like(labels, dtype=np.float32)
         for y in np.unique(y_pred):
@@ -139,4 +129,4 @@ def run_inference(
         else:
             inference = apply_mask(img, uxo_mask, mode='highlight')
 
-        cv2.imwrite(f"{inference_dir}/{img_label}.png", inference)
+        cv2.imwrite(f"{inference_dir}/{img_label}.jpg", inference)

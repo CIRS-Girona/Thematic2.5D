@@ -1,7 +1,9 @@
-import os, yaml
+import os, yaml, cv2, gc
+from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor
+import numpy as np
 
-from src.utils import create_dataset, train_model, run_inference
+from src.utils import create_dataset, train_model, run_inference, meanIoU
 
 
 if __name__ == "__main__":
@@ -10,15 +12,14 @@ if __name__ == "__main__":
         config = yaml.safe_load(f)
 
     # Set directories from config
-    source_dir = config['directories']['source_dir']
-    input_dir = f"{source_dir}/{config['directories']['input_dir']}"
-    dataset_dir = f"{source_dir}/{config['directories']['dataset_dir']}"
-    results_dir = f"{source_dir}/{config['directories']['results_dir']}"
-    models_dir = f"{source_dir}/{config['directories']['models_dir']}"
-    features_dir = f"{source_dir}/{config['directories']['features_dir']}"
+    input_dir = config['directories']['input_dir']
+    dataset_dir = config['directories']['dataset_dir']
+    results_dir = config['directories']['results_dir']
+    models_dir = config['directories']['models_dir']
+    features_dir = config['directories']['features_dir']
 
     if not os.path.exists(input_dir) or not os.path.isdir(input_dir):
-        print("The tiles folder doesn't exist. Please create the tiles folder as explained in the README file.")
+        print("The images folder doesn't exist. Please create the images folder as explained in the README file.")
         exit()
 
     # Create directories if they don't exist
@@ -35,9 +36,9 @@ if __name__ == "__main__":
                 continue
 
             create_dataset(
-                f"{input_dir}/{dtset}/images",
-                f"{input_dir}/{dtset}/depths",
-                f"{input_dir}/{dtset}/masks",
+                f"{input_dir}/{dtset}/images/",
+                f"{input_dir}/{dtset}/depths/",
+                f"{input_dir}/{dtset}/masks/",
                 dataset_dir=dataset_dir,
                 uxo_start_code=config['uxo_start_code'],
                 invalid_code=config['invalid_code'],
@@ -71,30 +72,70 @@ if __name__ == "__main__":
     if config['run_inference']['enabled']:
         print("Running inference...")
 
+        args = []
+        for img in os.listdir(config['run_inference']['depth_path']):
+            label = '.'.join(img.split('.')[:-1])
+
+            image_path = f"{config['run_inference']['image_path']}/{label}"
+            if os.path.exists(f"{image_path}.jpg") and os.path.isfile(f"{image_path}.jpg"):
+                image_path = f"{image_path}.jpg"
+            elif os.path.exists(f"{image_path}.png") and os.path.isfile(f"{image_path}.png"):
+                image_path = f"{image_path}.png"
+            else:
+                raise FileNotFoundError("Images are neither in jpg or png format")
+
+            args.append((
+                image_path,
+                f"{config['run_inference']['depth_path']}/{label}.png",
+                models_dir,
+                results_dir,
+                config['uxo_start_code'],
+                config['max_uxo_code'],
+                config['run_inference']['region_size'],
+                config['run_inference']['window_size'],
+                config['run_inference']['patch_size'],
+                config['run_inference']['subdivide_axis'],
+                config['run_inference']['threshold'],
+            ))
+
         with ThreadPoolExecutor(max_workers=config['run_inference']['thread_count']) as exe:
-            
-            for img in os.listdir(config['run_inference']['depth_path']):
-                label = '.'.join(img.split('.')[:-1])
+            list(tqdm(
+                exe.map(lambda a: run_inference(*a), args),
+                total=len(args)
+            ))
 
-                image_path = f"{config['run_inference']['image_path']}/{label}"
-                if os.path.exists(f"{image_path}.jpg") and os.path.isfile(f"{image_path}.jpg"):
-                    image_path = f"{image_path}.jpg"
-                elif os.path.exists(f"{image_path}.png") and os.path.isfile(f"{image_path}.png"):
-                    image_path = f"{image_path}.png"
-                else:
-                    raise FileNotFoundError("Images are neither in jpg or png format")
+    if config['evaluate_results']['enabled']:
+        print("Evaluating results...")
 
-                exe.submit(
-                    run_inference,
-                    image_path,
-                    f"{config['run_inference']['depth_path']}/{label}.png",
-                    models_dir,
-                    results_dir,
-                    config['uxo_start_code'],
-                    config['max_uxo_code'],
-                    config['run_inference']['region_size'],
-                    config['run_inference']['window_size'],
-                    config['run_inference']['patch_size'],
-                    config['run_inference']['subdivide_axis'],
-                    config['run_inference']['threshold'],
-                )
+        for dir in os.listdir(results_dir):
+            curr_dir = f"{results_dir}/{dir}"
+
+            if not os.path.isdir(curr_dir):
+                continue
+
+            print(f"Evaluating results for {dir}")
+
+            miou_scores = {}
+            for mask in tqdm(os.listdir(config['evaluate_results']['mask_path'])):
+                label = "".join(mask.split('.')[:-1])
+
+                if not os.path.exists(f"{curr_dir}/{label}_mask.png"):
+                    continue
+
+                mask_gt = cv2.imread(f"{config['evaluate_results']['mask_path']}/{mask}", cv2.IMREAD_UNCHANGED)
+                mask_result = cv2.imread(f"{curr_dir}/{label}_mask.png", cv2.IMREAD_UNCHANGED)
+
+                mask_gt[mask_gt < config['uxo_start_code']] = 0
+                if "binary" in dir:
+                    mask_gt[mask_gt > 0] = 1
+
+                miou_scores[label] = meanIoU(mask_gt, mask_result)
+
+                del mask_gt, mask_result
+                gc.collect()
+
+            with open(f"{curr_dir}/meanIoU.txt", 'w') as f:
+                f.write(f"Average mIoU score: {np.mean(tuple(miou_scores.values()))}\n\n")
+                
+                for label, miou_score in miou_scores.items():
+                    f.write(f"{label}: {miou_score}\n")

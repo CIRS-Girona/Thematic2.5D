@@ -138,7 +138,7 @@ def save_features(images_dir: str, depth_dir: str, features_dir: str, subset: in
         gc.collect()
 
 
-def load_features(features_dir: str, dimension: Literal['2', '25', '3'] = '2') -> Tuple[np.ndarray, List[str]]:
+def load_features(features_dir: str, dimension: Literal['2', '25', '3'] = '2') -> Tuple[np.ndarray, np.ndarray]:
     """
     Loads features and labels from msgpack files saved by `save_features`.
 
@@ -177,6 +177,6 @@ def load_features(features_dir: str, dimension: Literal['2', '25', '3'] = '2') -
         raise ValueError(f"Invalid dimension specified: {dimension}. Must be '2', '25', or '3'.")
 
     with open(f"{features_dir}/labels.msgpack", 'rb') as f:
-        labels = msgpack.unpackb(f.read())
+        labels = np.array(msgpack.unpackb(f.read()), dtype=str)
 
     return features, labels

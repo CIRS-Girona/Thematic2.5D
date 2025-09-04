@@ -129,10 +129,9 @@ class ClassificationModel:
         The filename is generated based on the model name, label,
         and whether it's a binary classification model.
         """
+        is_binary = False
         if hasattr(self.model.steps[-1][1], 'classes_'):
             is_binary = len(self.model.steps[-1][1].classes_) == 2
-        else:
-            is_binary = False
 
         binary_suffix = '_binary' if is_binary else ''
         filename = f"{self.name}{self.label}{binary_suffix}.pkl"
