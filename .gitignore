@@ -3,6 +3,7 @@ data/
 temp/
 dataset/
 venv/
+jats/
 .vscode/
 *.tif
 *.pkl

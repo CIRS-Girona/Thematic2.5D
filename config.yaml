@@ -3,11 +3,11 @@ uxo_start_code: 5
 max_uxo_code: 8
 
 directories:
-  input_dir: './temp/data'             # Directory containing the input tiled data (images, depths, masks).
-  dataset_dir: './data/dataset'        # Directory where the processed dataset patches will be saved.
-  results_dir: './data/results'        # Directory to save classification reports and inference output images.
-  models_dir: './data/models'          # Directory to save trained model files.
-  features_dir: './data/features'      # Directory to save extracted features.
+  input_dir: 'temp/data'             # Directory containing the input tiled data (images, depths, masks).
+  dataset_dir: 'data/dataset'        # Directory where the processed dataset patches will be saved.
+  results_dir: 'data/results'        # Directory to save classification reports and inference output images.
+  models_dir: 'data/models'          # Directory to save trained model files.
+  features_dir: 'data/features'      # Directory to save extracted features.
 
 create_dataset:
   enabled: false                       # Set to `true` to enable dataset creation.
