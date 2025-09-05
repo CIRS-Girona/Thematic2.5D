@@ -1,5 +1,5 @@
 ---
-title: 'uwmm-baseline: A Python Package for Supervised Classification of Underwater Military Munitions Using Multi-Modal Data'
+title: 'UWMM-Baseline: A Python Package for Supervised Classification of Underwater Military Munitions Using Multi-Modal Data'
 
 tags:
   - Python
@@ -10,22 +10,20 @@ tags:
   - structure-from-motion
 
 authors:
-  - name: [Name]
-    orcid: [ORCID]
+  - name: Author 1
     affiliation: 1
     corresponding: true
-  - name: [Co-Author Name]
-    orcid: [Co-Author ORCID]
+  - name: Author 2
     affiliation: 2
 
 affiliations:
-  - name: [Institution], [Country]
+  - name: University of Girona, Spain
     index: 1
-    ror: [Institution ROR]
-  - name: [Co-Author Institution], [Country]
+    ror: 01xdxns91
+  - name: University of Miami, USA
     index: 2
 
-date: 09 May 2025
+date: 04 September 2025
 
 bibliography: paper.bib
 
@@ -33,153 +31,108 @@ bibliography: paper.bib
 
 # Summary
 
-The presence of underwater military munitions (UWMM) in coastal and marine environments poses significant environmental and safety risks. Accurate detection and classification of UWMM are critical for remediation efforts, requiring robust methods to process multi-modal data, such as optical imagery and 3D reconstructions. UWMM detection leverages computer vision, machine learning, and 3D modeling to identify munitions against complex seabed backgrounds. Existing approaches, such as those using 2D image features, often suffer from high false positive rates, necessitating the integration of geometric (2.5D/3D) data to improve accuracy.
+The presence of underwater military munitions (UWMM) in coastal and marine environments poses significant environmental and safety risks. Accurate detection and classification of UWMM are critical for remediation efforts, requiring robust methods to process multi-modal data, such as optical imagery and 3D reconstructions. UWMM detection leverages computer vision, machine learning, and 3D modeling to identify munitions against complex seabed backgrounds. Existing approaches, such as those using 2D image features, often suffer from high false positive rates, necessitating the integration of geometric (3D) data to improve accuracy.
 
-`uwmm-baseline` is an open-source Python package designed for the supervised classification of UWMMs using multi-modal data, including optical imagery (2D) and digital elevation models (DEMs) derived from 3D reconstructions of the scene (2.5D). Building on the methodology of Gleason et al. (2015) [@Gleason:2015], the package implements a modular pipeline for dataset creation, feature extraction, classification, and evaluation. Key features include:
+`UWMM-Baseline` is an open-source Python package designed for the supervised classification of UWMMs using multi-modal data, including optical imagery (2D) and digital elevation models (DEMs) derived from 3D reconstructions of the scene (3D). Building on the methodology of Gleason et al. (2015) [@Gleason:2015], the package implements a modular pipeline for dataset creation, feature extraction, classification, and evaluation. Key features include:
 
-- **Dataset Creation:** Automated patch extraction and labeling from underwater imagery and DEMs.
-- **Feature Extraction:** Extraction of 2D (color, texture) and 2.5D (elevation, curvature, rugosity) features, with extensibility for 3D data.
-- **Classification:** Support for binary (UWMM vs. background) and multi-class (UWMM type) classification using Support Vector Machines (SVM) and other algorithms.
-- **Evaluation:** Comprehensive metrics (overall accuracy, users’ accuracy, producers’ accuracy) and visualizations (mosaics, confusion matrices).
-- **Modularity:** A flexible framework allowing integration of new features, models, and data modalities.
+- **Dataset Creation:** Automated tile extraction and labeling from underwater imagery and DEMs.
+- **Feature Extraction:** Extraction of 2D (color, texture) and 3D (elevation, curvature, rugosity) features, which can be combined into a 2.5D feature set.
+- **Classification:** Support for binary (UWMM vs. background) and multi-class (UWMM type) classification using Support Vector Machines (SVM).
+- **Inference and Evaluation:** A complete inference pipeline to generate prediction masks on new data and quantitative evaluation using mean Intersection over Union (mIoU).
+- **Modularity:** A flexible, configuration-driven framework allowing integration of new features, models, and data modalities.
 
-`uwmm-baseline` is designed for researchers, oceanographers, and environmental engineers working on UWMM detection, as well as educators teaching computer vision or marine science. It integrates with popular scientific Python libraries (e.g., NumPy, OpenCV, scikit-learn) and supports workflows for both research and practical applications, such as seabed surveys and environmental monitoring.
+`UWMM-Baseline` is designed for researchers, oceanographers, and environmental engineers working on UWMM detection, as well as educators teaching computer vision or marine science. It integrates with popular scientific Python libraries and supports workflows for both research and practical applications, such as seabed surveys and environmental monitoring.
 
 # Statement of Need
 
 UWMM detection is a pressing challenge in marine environments, where legacy munitions from military activities contaminate coastlines and pose risks to ecosystems and human safety. Traditional detection methods, such as acoustic sonar or traditional 2D optical imagery, are often limited by resolution or seabed complexity. Optical imagery, combined with SfM-derived digital elevation models (DEMs), offers high-resolution data for precise UWMM identification, as demonstrated by Gleason et al. (2015) [@Gleason:2015]. However, existing software tools for UWMM detection are either proprietary, domain-specific, or lack the flexibility to handle multi-modal data in a unified framework.
 
-`uwmm-baseline` addresses this gap by providing a free, open-source, and modular Python package that implements established UWMM classification techniques using modern libraries. Unlike general-purpose computer vision libraries (e.g., OpenCV [@opencv_library]), `uwmm-baseline` is tailored for underwater environments, incorporating domain-specific preprocessing (e.g., Contrast Limited Adaptive Histogram Equalization (CLAHE) for underwater images) and feature extraction (e.g., rugosity, curvature from DEMs).
+`UWMM-Baseline` addresses this gap by providing a free, open-source, and modular Python package that implements established UWMM classification techniques using modern libraries. Unlike general-purpose computer vision libraries, `UWMM-Baseline` is tailored for underwater environments, incorporating domain-specific preprocessing and feature extraction (e.g., rugosity, curvature from DEMs).
 
-The package’s modularity enables researchers to experiment with new features, classifiers, or data sources (e.g., sonar, stereo vision), while its accessibility supports educational use in courses on machine learning, oceanography, or environmental science. By providing a full pipeline from data ingestion to evaluation, `uwmm-baseline` lowers barriers to entry for UWMM detection research, fostering innovation in environmental monitoring and remediation.
+The package’s modularity enables researchers to experiment with new features, classifiers, or data sources (e.g., sonar, stereo vision), while its accessibility supports educational use in courses on machine learning, oceanography, or environmental science. By providing a full pipeline from data ingestion to evaluation, `UWMM-Baseline` lowers barriers to entry for UWMM detection research, fostering innovation in environmental monitoring and remediation.
 
 # Background
 
-TODO:
+![Inference output of the UWMM baseline model. The leftmost image represents the output of the model trained exclusively on 2D features, the central image shows the output of the model trained exclusively on 3D features, and the rightmost image illustrates the output of the model trained on 2.5D extracted features. \label{fig:inference}](inference.jpg)
 
-- Add more detials (2D, 2.5D, 3D)
-- Add flowchart
-- Explain why we process images into tiles
+The detection of UWMM in underwater environments involves processing optical imagery to identify munitions against varied seabed backgrounds (e.g., coral reefs, seagrass). The core challenge lies in distinguishing human-made objects from similarly shaped or textured natural features. Gleason et al. (2015) demonstrated that while 2D image features (color, texture) achieve moderate accuracy (>80% for binary classification), they suffer from high false positives due to background complexity [@Gleason:2015]. Incorporating 3D features (e.g., elevation, curvature) from SfM-derived DEMs significantly improves accuracy (89-95%) and reduces false positives, as these features capture the distinct geometric properties of munitions. This combined 2D and 3D approach is often referred to as 2.5D.
 
-![Example cylinder basis functions, where the color encodes the amplitude of the function, for an exponential disk with a scale length of 3 and a scale height of 0.3 in arbitrary units. We select three functions at low, medium, and higher order (corresponding to the number of nodes). The color scale has been normalised such that the largest amplitude is unity in each panel. \label{fig:examplecylinder}](examplefunctions.png)
+The methodology is broken down into a multi-stage pipeline. First, large survey images are processed into smaller, manageable tiles or tiles. This approach allows the model to learn local, high-resolution features and creates a large, diverse dataset suitable for training supervised machine learning models. The general workflow is as follows:
 
-(See \autoref{fig:examplecylinder})
+1.  **Dataset Creation:** Optical images, depth maps, and ground-truth masks are used to generate a labeled dataset of image tiles.
+2.  **Feature Extraction:** A comprehensive set of 2D and 3D features is extracted from each tile.
+3.  **Model Training:** A classifier, such as an SVM, is trained on the extracted features.
+4.  **Inference:** The trained model is used to predict the locations of UWMM in new, unseen images.
+5.  **Evaluation:** The model's predictions are compared against ground-truth data to assess performance quantitatively.
 
-The detection of UWMM in underwater environments involves processing optical imagery to identify munitions against varied seabed backgrounds (e.g., coral reefs, seagrass). Gleason et al. (2015) demonstrated that 2D image features (color, texture) achieve moderate accuracy (>80% for binary classification) but suffer from high false positives due to background complexity [@Gleason:2015]. Incorporating 3D features (e.g., elevation, curvature) from SfM-derived DEMs significantly improves accuracy (89-95%) and reduces false positives, as these features capture munitions’ geometric properties.
+This project implements this entire workflow in a configurable and automated pipeline, building on the foundational work of Gleason et al. to provide an accessible software tool.
 
-The methodology involves:
-1. **Data Acquisition:** Capturing overlapping underwater images to generate DEMs via SfM.
-2. **Feature Extraction:** Computing 2D features (e.g., color histograms, Local Binary Patterns (LBP)) and 3D features (e.g., elevation statistics, rugosity).
-3. **Classification:** Training SVM models for binary or multi-class tasks [@svm_algorithm].
-4. **Evaluation:** Using error matrices to compute overall accuracy, users’ accuracy (false positives), and producers’ accuracy (false negatives).
+# Methodology
 
-This approach, while effective, requires accessible software to automate and extend the pipeline. `uwmm-baseline` builds on this foundation, implementing a modular framework that replicates and enhances Gleason et al.’s methodology while supporting additional data modalities and classifiers.
+![The implemented classification framework is depicted in the above flowchart. The left section outlines the primary stages of the pipeline, while the right section details the specific components and features utilized in each stage. \label{fig:flowchart}](flowchart.jpg)
 
-# Package Overview
+The `UWMM-Baseline` pipeline processes underwater images, depth maps, and masks to generate a labeled dataset of uniformly sized tiles for training and testing. It identifies potential underwater munitions (UWMM) and background locations using masks, extracting corresponding square tiles from image and depth data. To address class imbalance, a fixed number of background tiles are sampled per image, and only a subset of available UWMM pixels are used as tile centers. Data augmentation is applied by rotating UWMM tiles at multiple angles.
 
-`uwmm-baseline` is structured as a modular pipeline with four core components, implemented as Python scripts:
+From the processed tiles, 2D and 3D features are extracted, extending the feature set proposed by Gleason et al. (2015) [@Gleason:2015]. The 2D features, derived from optical images, include:
 
-1. **dataset_creator.py**: Generates labeled tiles from raw images and DEMs.
-2. **feature_extraction.py**: Extracts 2D and 3D features, with extensibility for 2.5D data.
-3. **ClassificationModel.py**: Trains and evaluates SVM-based classifiers.
-4. **main.py**: Orchestrates the pipeline, supporting configuration-driven workflows.
+-   **2D Features (from optical images):**
+    -   **Color Histograms:** HSV color distributions to capture seabed and UWMM appearance.
+    -   **Local Binary Patterns (LBP):** Texture descriptors robust to illumination changes [@lbp_algorithm].
+    -   **Gray Level Co-occurrence Matrix (GLCM):** Texture metrics (e.g., contrast, dissimilarity) for seabed characterization [@glcm_algorithm].
+    -   **Gabor Filters:** Edge and texture detection across multiple scales and orientations [@gabor_algorithm].
 
-Flexibility and ease-of-use are emphasized throughout `uwmm-baseline` codebase:
+-   **3D Features (from depth maps):**
+    -   **Principal Plane Features:** Statistics of depth values, polynomial coefficients from a fitted surface, and rugosity (ratio of surface area to planar area).
+    -   **Curvatures and Normals:** Mean and Gaussian curvatures, shape index, curvedness, and surface normal vector statistics.
+    -   **Symmetry Features:** Gabor filters applied to depth maps to capture structural symmetry.
 
-- **Configuration Files:** YAML files specify feature sets, model parameters, and evaluation metrics, enabling rapid experimentation.
-- **Plugin System:** Users can add custom feature extractors or classifiers by extending base classes in `feature_extraction.py` and `ClassificationModel.py`.
-- **Data Modalities:** The pipeline supports integration of new data types (e.g., sonar, hyperspectral imagery) by modifying input handlers in `dataset_creator.py`.
-- **Scalability:** Parallel processing optimizes feature extraction and training for large datasets.
+The classifier is implemented using a Support Vector Machine (SVM) with a radial basis function (RBF) kernel, approximated via the Nystroem method [@svm_algorithm, @nystroem_algorithm]. The model supports training on 2D, 3D, or combined 2.5D feature sets. Prior to inference, superpixel segmentation identifies homogeneous regions in the input image [@superpixel_algorithm]. These regions are subdivided into overlapping tiles, each processed by the trained model to predict class labels. A neighborhood poll determines UWMM presence by evaluating whether the number of positive tile predictions within a region exceeds a predefined threshold. The final output is a segmentation mask indicating detected UWMM locations (see \autoref{fig:inference}).
 
-The package depends on standard scientific Python libraries, including NumPy [@numpy_library], OpenCV [@opencv_library], scikit-learn [@scikit-learn_library], scikit-image [@scikit-image_library], and SciPy [@scipy_library], ensuring compatibility and ease of installation.
+This implementation leverages standard Python libraries, including NumPy [@numpy_library], OpenCV [@opencv_library], scikit-learn [@scikit-learn_library], scikit-image [@scikit-image_library], and SciPy [@scipy_library] for feature extraction, model training, and data processing.
 
-## Dataset Creation
+## Model Training and 3D Feature Extraction
 
-The `dataset_creator.py` script processes underwater images and DEMs to create labeled tiles for training and testing. Key features include:
+The classification pipeline in `UWMM-Baseline` relies on feature extraction and Support Vector Machine (SVM) classification. For a tile $\mathbf{x} \in \mathbb{R}^{m \times n}$ (image) and corresponding DEM $\mathbf{d} \in \mathbb{R}^{m \times n}$, the feature vector $\mathbf{f}_{2.5D}$ combines 2D and 3D features:
 
-- **Patch Extraction:** Divides images and DEMs into overlapping tiles (e.g., 128x128 pixels) to capture local features.
-- **Class Balancing:** Oversamples UWMM tiles to mitigate background dominance, ensuring robust training datasets.
+$$\mathbf{f}_{2.5D} = [\mathbf{f}_{2D}, \mathbf{f}_{3D}]$$
 
-The script accepts raw images (e.g., JPEG, PNG) and depth maps stored in PNG format as 16-bit unsigned integers.
+The 3D features, $\mathbf{f}_{3D}$, are extracted from the elevation map of each tile. This process involves several calculations to describe the geometry of the surface.
 
-## Feature Extraction
+A 2D polynomial surface of the third degree is fitted to the elevation map of a tile to model its shape [@Shihavuddin:2014]. The equation for this surface is:
 
-The `feature_extraction.py` script computes 2D and 3D features, replicating and extending the feature set from Gleason et al. (2015) [@Gleason:2015]. Features are categorized as:
+$$f(x,y) = p_{1}+p_{2}x+p_{3}y+p_{4}x^{2}+p_{5}xy+p_{6}y^{2}+p_{7}x^{2}y+p_{8}xy^{2}+p_{9}y^{3}$$
 
-- **2D Features:**
-  - **Color Histograms:** HSV color distributions to capture seabed and UWMM appearance.
-  - **Local Binary Patterns (LBP):** Texture descriptors for robustness to illumination changes [@lbp_algorithm].
-  - **Gray Level Co-occurrence Matrix (GLCM):** Texture metrics (e.g., contrast, dissimilarity) for seabed characterization [@glcm_algorithm].
-  - **Gabor Filters:** Edge and texture detection across multiple scales and orientations [@gabor_algorithm].
+The nine coefficients of this polynomial ($p_1, ..., p_9$) are extracted through least-squares fitting and used as features [@Shihavuddin:2014].
 
-- **3D Features:**
-  - **Elevation Statistics:** Mean, standard deviation, skewness of DEM heights.
-  - **Polynomial Coefficients:** Surface approximations for shape modeling.
-  - **Geometric Features:** Slope, curvature, surface normals, rugosity, and symmetry.
-  - **Surface Analysis:** Rugosity and symmetry metrics to distinguish UWMM from natural seabed features.
+Additional statistical features are calculated from the elevation values ($z_i$) within a tile, including the standard deviation, skewness, and kurtosis [@Shihavuddin:2014]. With $z_m$ as the mean elevation, $S$ as the standard deviation, and $N$ as the number of data points, the skewness and kurtosis are calculated as:
 
-Features are standardized and optionally reduced using Principal Component Analysis (PCA) [@pca_algorithm], as suggested by Gleason et al.’s high-dimensional feature set.
+$$\text{Skewness} = \frac{\sum(z_i-z_m)^3}{(N-1)S^3}$$
 
-## Classification
+$$\text{Kurtosis} = \frac{\sum_{i=1}^{N}(z_{i}-z_{m})^{4}}{(N-1)S^{4}}$$
 
-The `ClassificationModel.py` script implements SVM classifiers for binary (UWMM vs. background) and multi-class (UWMM type) tasks, following Gleason et al. (2015) [@Gleason:2015]. Key features include:
+With regards to surface curvature, the Gaussian ($G$) and mean ($M$) surface curvatures are first calculated from the partial derivatives of the elevation map where the two principal curvatures, $k_1$ and $k_2$, can then be derived [@Shihavuddin:2014]:
 
-- **Model Architecture:** Uses scikit-learn’s SVM with radial basis function (RBF) kernels, standardized features, and optional kernel approximation (e.g., Nystroem) for scalability [@scikit-learn_library].
-- **Training Modes:** Supports binary and multi-class classification, with configurable hyperparameters (e.g., C, gamma) via configuration files.
-- **Alternative Classifiers:** Extensible to include Random Forests or Gradient Boosting, enabling experimentation.
-- **Cross-Validation:** Implements k-fold cross-validation to ensure robust performance across seabed types.
+$$k_{1}=M+\sqrt{M^{2}-G}$$
 
-The script outputs trained models in pickle format for reuse and supports inference on new data.
+$$k_{2}=M-\sqrt{M^{2}-G}$$
 
-## Evaluation
+These principal curvatures are then used to calculate a shape index ($S$) and a curvedness index ($C$):
 
-The `main.py` script orchestrates the pipeline and evaluates performance using metrics from Gleason et al. (2015) [@Gleason:2015]:
+$$S=\frac{2}{\pi}\arctan\left(\frac{k_{2}+k_{1}}{k_{2}-k_{1}}\right), \quad C=\sqrt{\frac{k_{1}^{2}+k_{2}^{2}}{2}}$$
 
-- **Error Matrix:** Computes overall accuracy (OA), users’ accuracy (false positives), and producers’ accuracy (false negatives).
-- **Classification Reports:** Per-class precision, recall, and F1-scores using scikit-learn [@scikit-learn_library].
-- **Confusion Matrices:** Visualizes classification errors for binary and multi-class tasks.
+Finally, rugosity ($r$) is computed to characterize the roughness of the seafloor habitat [@Shihavuddin:2014]. It is calculated by dividing the contoured surface area of the tile ($A_s$) by the area of its orthogonal projection onto the principal plane ($A_p$):
 
-Evaluation results are saved in TXT format, with visualizations exported as PNG files for publication or analysis.
+$$r = \frac{A_s}{A_p} \quad$$
 
-# Mathematics
+Once the full feature vector is assembled, the SVM classifier solves the following optimization problem:
 
-TODO:
-- Revise math using [@Shihavuddin:2014]
-
-The classification pipeline in `uwmm-baseline` relies on feature extraction and SVM classification. For a patch $\mathbf{x} \in \mathbb{R}^{m \times n}$ (image) and corresponding DEM $\mathbf{d} \in \mathbb{R}^{m \times n}$, the feature vector $\mathbf{f}_{2.5D}$ combines 2D and 3D features:
-
-$$
-\mathbf{f}_{2.5D} = [\mathbf{f}_{2D}, \mathbf{f}_{3D}]
-$$
-
-where:
-- $\mathbf{f}_{2D}$: Color histograms, LBP, GLCM, and Gabor filter responses.
-- $\mathbf{f}_{3D}$: Elevation statistics, polynomial coefficients, slope, curvature, rugosity, etc.
-
-The SVM classifier solves the optimization problem:
-
-$$
-\min_{\mathbf{w}, b, \xi} \frac{1}{2} \|\mathbf{w}\|^2 + C \sum_{i=1}^N \xi_i
-$$
+$$\min_{\mathbf{w}, b, \xi} \frac{1}{2} \|\mathbf{w}\|^2 + C \sum_{i=1}^N \xi_i$$
 
 subject to:
 
-$$
-y_i (\mathbf{w}^T \phi(\mathbf{f}_i) + b) \geq 1 - \xi_i, \quad \xi_i \geq 0, \quad i = 1, \ldots, N
-$$
+$$y_i (\mathbf{w}^T \phi(\mathbf{f}_i) + b) \geq 1 - \xi_i, \quad \xi_i \geq 0, \quad i = 1, \ldots, N$$
 
-where $\mathbf{w}$ is the weight vector, $b$ is the bias, $\xi_i$ are slack variables, $C$ is the regularization parameter, $\phi$ is the kernel mapping (RBF), and $y_i \in \{-1, 1\}$ (binary) or $y_i \in \{1, \ldots, K\}$ (multi-class) are labels.
-
-For multi-class classification, `uwmm-baseline` uses a one-vs-rest strategy, training $K$ binary classifiers for $K$ UWMM types.
-
-# Applications
-
-`uwmm-baseline` can be applied in:
-- **Research:** Seabed surveys for UWMM detection in coastal remediation projects.
-- **Education:** Graduate courses on computer vision and marine science, providing interactive workflows for analyzing underwater imagery.
-- **Industry:** Environmental monitoring for UWMM risk assessment in offshore infrastructure projects.
-
-The package’s extensibility supports future applications, such as integrating sonar data or applying deep learning models (e.g., CNNs) for enhanced detection.
+where $\mathbf{w}$ is the weight vector, $b$ is the bias, $\xi_i$ are slack variables, $C$ is the regularization parameter, $\phi$ is the kernel mapping (RBF), and $y_i$ are the class labels [@svm_algorithm].
 
 # Acknowledgements
 
