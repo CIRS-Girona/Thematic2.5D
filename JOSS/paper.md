@@ -10,11 +10,21 @@ tags:
   - structure-from-motion
 
 authors:
-  - name: Author 1
+  - given-names: Taqi
+    surname: Hamoda
     affiliation: 1
     corresponding: true
-  - name: Author 2
+  - given-names: Hayat
+    surname: Rajani
+    orcid: 0000-0002-2541-2787
+    affiliation: 1
+  - given-names: Arthur
+    surname: Gleason
     affiliation: 2
+  - given-names: Nuno
+    surname: Gracias
+    orcid: 0000-0002-4675-9595
+    affiliation: 1
 
 affiliations:
   - name: University of Girona, Spain
@@ -33,7 +43,7 @@ bibliography: paper.bib
 
 The presence of underwater military munitions (UWMM) in coastal and marine environments poses significant environmental and safety risks. Accurate detection and classification of UWMM are critical for remediation efforts, requiring robust methods to process multi-modal data, such as optical imagery and 3D reconstructions. UWMM detection leverages computer vision, machine learning, and 3D modeling to identify munitions against complex seabed backgrounds. Existing approaches, such as those only using image features (2D), often suffer from high false positive rates, necessitating the integration of geometric data (3D) to improve accuracy.
 
-`UWMM-Baseline` is an open-source Python package designed for the supervised classification of UWMMs using multi-modal data, including optical imagery and digital elevation models (DEMs) derived from 3D reconstructions of the scene. Building on the methodology of [@Gleason:2015], the package implements a modular pipeline for dataset creation, feature extraction, classification, and evaluation. Key features include:
+`UWMM-Baseline` is an open-source Python package designed for the supervised classification of UWMMs using multi-modal data, including optical imagery and digital elevation models (DEMs) derived from 3D reconstructions of the scene. Building on the methodology of @Gleason:2015, the package implements a modular pipeline for dataset creation, feature extraction, classification, and evaluation. Key features include:
 
 - **Dataset Creation:** Automated tile extraction and labeling from underwater imagery and DEMs.
 - **Feature Extraction:** Extraction of 2D-derived (color, texture) and 3D-derived (elevation, curvature, rugosity) features, which can be combined into a hybrid 2.5D feature set.
@@ -45,7 +55,7 @@ The presence of underwater military munitions (UWMM) in coastal and marine envir
 
 # Statement of Need
 
-UWMM detection is a pressing challenge in marine environments, where legacy munitions from military activities contaminate coastlines and pose risks to ecosystems and human safety. Traditional detection methods, such as acoustic or optical imagery, are often limited by resolution or seabed complexity. Optical imagery, combined with DEMs, offers high-resolution data for precise UWMM identification, as demonstrated in [@Gleason:2015]. However, existing software tools for UWMM detection are either proprietary, domain-specific, or lack the flexibility to handle multi-modal data in a unified framework.
+UWMM detection is a pressing challenge in marine environments, where legacy munitions from military activities contaminate coastlines and pose risks to ecosystems and human safety. Traditional detection methods, such as acoustic or optical imagery, are often limited by resolution or seabed complexity. Optical imagery, combined with DEMs, offers high-resolution data for precise UWMM identification, as demonstrated by @Gleason:2015. However, existing software tools for UWMM detection are either proprietary, domain-specific, or lack the flexibility to handle multi-modal data in a unified framework.
 
 `UWMM-Baseline` addresses this gap by providing a free, open-source, and modular Python package that implements established UWMM classification techniques using modern libraries. Unlike general-purpose computer vision libraries, `UWMM-Baseline` is tailored for underwater environments, incorporating domain-specific preprocessing and feature extraction (e.g., rugosity, curvature from DEMs).
 
@@ -73,7 +83,7 @@ This project implements this entire workflow in a configurable and automated pip
 
 The `UWMM-Baseline` pipeline processes underwater images, depth maps, and masks to generate a labeled dataset of uniformly sized tiles for training and testing. It identifies potential UWMM and background locations using masks, extracting corresponding square tiles from image and depth data. To address class imbalance, a fixed number of background tiles are sampled per image, and only a subset of available UWMM pixels are used as tile centers. Data augmentation is applied by rotating UWMM tiles at multiple angles.
 
-From the processed tiles, 2D-derived and 3D-derived features are extracted, extending the feature set proposed in [@Gleason:2015]:
+From the processed tiles, 2D-derived and 3D-derived features are extracted, extending the feature set proposed by @Gleason:2015:
 
 -   **2D-derived Features (from optical images):**
     -   **Color Histograms:** HSV color distributions to capture seabed and UWMM appearance.
