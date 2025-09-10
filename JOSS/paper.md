@@ -33,10 +33,10 @@ bibliography: paper.bib
 
 The presence of underwater military munitions (UWMM) in coastal and marine environments poses significant environmental and safety risks. Accurate detection and classification of UWMM are critical for remediation efforts, requiring robust methods to process multi-modal data, such as optical imagery and 3D reconstructions. UWMM detection leverages computer vision, machine learning, and 3D modeling to identify munitions against complex seabed backgrounds. Existing approaches, such as those only using image features (2D), often suffer from high false positive rates, necessitating the integration of geometric data (3D) to improve accuracy.
 
-`UWMM-Baseline` is an open-source Python package designed for the supervised classification of UWMMs using multi-modal data, including optical imagery and digital elevation models (DEMs) derived from 3D reconstructions of the scene. Building on the methodology of [@Gleason:2015], the package implements a modular pipeline for dataset creation, feature extraction, classification, and evaluation. Key features include:
+`UWMM-Baseline` is an open-source Python package designed for the supervised classification of UWMMs using multi-modal data, including optical imagery and depth-maps derived from 3D reconstructions of the scene. Building on the methodology of @Gleason:2015, the package implements a modular pipeline for dataset creation, feature extraction, classification, and evaluation. Key features include:
 
-- **Dataset Creation:** Automated tile extraction and labeling from underwater imagery and DEMs.
-- **Feature Extraction:** Extraction of 2D-derived (color, texture) and 3D-derived (elevation, curvature, rugosity) features, which can be combined into a hybrid 2.5D feature set.
+- **Dataset Creation:** Automated tile extraction and labeling from underwater imagery and depth-maps.
+- **Feature Extraction:** Extraction of 2D-derived (color, texture) and 3D-derived (curvature, rugosity) features, which can be combined into a hybrid 2.5D feature set.
 - **Classification:** Support for binary (UWMM vs. background) and multi-class (UWMM type) classification using Support Vector Machines (SVM).
 - **Inference and Evaluation:** A complete inference pipeline to generate prediction masks on new data and quantitative evaluation using mean Intersection over Union (mIoU).
 - **Modularity:** A flexible, configuration-driven framework allowing integration of new features, models, and data modalities.
@@ -45,9 +45,9 @@ The presence of underwater military munitions (UWMM) in coastal and marine envir
 
 # Statement of Need
 
-UWMM detection is a pressing challenge in marine environments, where legacy munitions from military activities contaminate coastlines and pose risks to ecosystems and human safety. Traditional detection methods, such as acoustic or optical imagery, are often limited by resolution or seabed complexity. Optical imagery, combined with DEMs, offers high-resolution data for precise UWMM identification, as demonstrated in [@Gleason:2015]. However, existing software tools for UWMM detection are either proprietary, domain-specific, or lack the flexibility to handle multi-modal data in a unified framework.
+UWMM detection is a pressing challenge in marine environments, where legacy munitions from military activities contaminate coastlines and pose risks to ecosystems and human safety. Traditional detection methods, such as acoustic or optical imagery, are often limited by resolution or seabed complexity. Optical imagery, combined with depth-maps, offers high-resolution data for precise UWMM identification, as demonstrated in @Gleason:2015. However, existing software tools for UWMM detection are either proprietary, domain-specific, or lack the flexibility to handle multi-modal data in a unified framework.
 
-`UWMM-Baseline` addresses this gap by providing a free, open-source, and modular Python package that implements established UWMM classification techniques using modern libraries. Unlike general-purpose computer vision libraries, `UWMM-Baseline` is tailored for underwater environments, incorporating domain-specific preprocessing and feature extraction (e.g., rugosity, curvature from DEMs).
+`UWMM-Baseline` addresses this gap by providing a free, open-source, and modular Python package that implements established UWMM classification techniques using modern libraries. Unlike general-purpose computer vision libraries, `UWMM-Baseline` is tailored for underwater environments, incorporating domain-specific preprocessing and feature extraction (e.g., rugosity, curvature from depth-maps).
 
 The package’s modularity enables researchers to experiment with new features, classifiers, or data sources (e.g., sonar, stereo vision), while its accessibility supports educational use in courses on machine learning, oceanography, or environmental science. By providing a full pipeline from data ingestion to evaluation, `UWMM-Baseline` lowers barriers to entry for UWMM detection research, fostering innovation in environmental monitoring and remediation.
 
@@ -55,9 +55,9 @@ The package’s modularity enables researchers to experiment with new features, 
 
 ![Inference output of the UWMM baseline model. The leftmost image represents the output of the model trained exclusively on 2D-derived features, the central image shows the output of the model trained exclusively on 3D-derived features, and the rightmost image illustrates the output of the model trained on 2.5D extracted features. \label{fig:inference}](inference.jpg)
 
-The detection of UWMM in underwater environments involves processing optical imagery to identify munitions against varied seabed backgrounds (e.g., coral reefs, seagrass). The core challenge lies in distinguishing human-made objects from similarly shaped or textured natural features. It was demonstrated that while 2D-derived features (color, texture) achieve moderate accuracy (>80% for binary classification), they suffer from high false positives due to background complexity [@Gleason:2015]. Incorporating 3D-derived features (e.g., elevation, curvature) from DEMs significantly improves accuracy (89-95%) and reduces false positives, as these features capture the distinct geometric properties of munitions. This combined, hybrid approach is referred to as the 2.5D approach.
+The detection of UWMM in underwater environments involves processing optical imagery to identify munitions against varied seabed backgrounds (e.g., coral reefs, seagrass). The core challenge lies in distinguishing human-made objects from similarly shaped or textured natural features. It was demonstrated that while 2D-derived features (color, texture) achieve moderate accuracy (>80% for binary classification), they suffer from high false positives due to background complexity [@Gleason:2015]. Incorporating 3D-derived features (e.g. curvature, rugosity) from depth-maps significantly improves accuracy (89-95%) and reduces false positives, as these features capture the distinct geometric properties of munitions. This combined, hybrid approach is referred to as the 2.5D approach.
 
-The methodology is broken down into a multi-stage pipeline. First, large survey images are processed into smaller, manageable tiles or tiles. This approach allows the model to learn local, high-resolution features and creates a large, diverse dataset suitable for training supervised machine learning models. The general workflow is as follows:
+The methodology is broken down into a multi-stage pipeline. First, large survey images are processed into smaller, manageable tiles. This approach allows the model to learn local, high-resolution features and creates a large, diverse dataset suitable for training supervised machine learning models. The general workflow is as follows:
 
 1.  **Dataset Creation:** Optical images, depth maps, and ground-truth masks are used to generate a labeled dataset of image tiles.
 2.  **Feature Extraction:** A comprehensive set of 2D-derived and 3D-derived features is extracted from each tile.
@@ -65,15 +65,15 @@ The methodology is broken down into a multi-stage pipeline. First, large survey 
 4.  **Inference:** The trained model is used to predict the locations of UWMM in new, unseen images.
 5.  **Evaluation:** The model's predictions are compared against ground-truth data to assess performance quantitatively.
 
-This project implements this entire workflow in a configurable and automated pipeline, building on the foundational work of Gleason et al. to provide an accessible software tool.
+This project implements this entire workflow in a configurable and automated pipeline, building on the foundational work of @Gleason:2015. to provide an accessible software tool.
 
 # Methodology
 
 ![The implemented classification framework is depicted in the above flowchart. The left section outlines the primary stages of the pipeline, while the right section details the specific components and features utilized in each stage. \label{fig:flowchart}](flowchart.jpg)
 
-The `UWMM-Baseline` pipeline processes underwater images, depth maps, and masks to generate a labeled dataset of uniformly sized tiles for training and testing. It identifies potential UWMM and background locations using masks, extracting corresponding square tiles from image and depth data. To address class imbalance, a fixed number of background tiles are sampled per image, and only a subset of available UWMM pixels are used as tile centers. Data augmentation is applied by rotating UWMM tiles at multiple angles.
+The `UWMM-Baseline` pipeline processes underwater images, depth-maps, and masks to generate a labeled dataset of uniformly sized tiles for training and testing. It identifies potential UWMM and background locations using masks, extracting corresponding square tiles from image and depth data. To address class imbalance, a fixed number of background tiles are sampled per image, and only a subset of available UWMM pixels are used as tile centers. Data augmentation is applied by rotating UWMM tiles at multiple angles.
 
-From the processed tiles, 2D-derived and 3D-derived features are extracted, extending the feature set proposed in [@Gleason:2015]:
+From the processed tiles, 2D-derived and 3D-derived features are extracted, extending the feature set proposed in @Gleason:2015:
 
 -   **2D-derived Features (from optical images):**
     -   **Color Histograms:** HSV color distributions to capture seabed and UWMM appearance.
@@ -92,25 +92,25 @@ This implementation leverages standard Python libraries, including NumPy [@numpy
 
 ## Model Training and 3D-derived Feature Extraction
 
-The classification pipeline in `UWMM-Baseline` relies on feature extraction and SVM-based classification. For a tile $\mathbf{x} \in \mathbb{R}^{m \times n}$ (image) and corresponding DEM $\mathbf{d} \in \mathbb{R}^{m \times n}$, the feature vector $\mathbf{f}_{2.5D}$ combines 2D-derived and 3D-derived features:
+The classification pipeline in `UWMM-Baseline` relies on feature extraction and SVM-based classification. For a tile $\mathbf{x} \in \mathbb{R}^{m \times n}$ (image) and corresponding depth-map $\mathbf{d} \in \mathbb{R}^{m \times n}$, the feature vector $\mathbf{f}_{2.5D}$ combines 2D-derived and 3D-derived features:
 
 $$\mathbf{f}_{2.5D} = [\mathbf{f}_{2D}, \mathbf{f}_{3D}]$$
 
-The 3D-derived features, $\mathbf{f}_{3D}$, are extracted from the elevation map of each tile. This process involves several calculations to describe the geometry of the surface.
+The 3D-derived features, $\mathbf{f}_{3D}$, are extracted from the depth-map of each tile. This process involves several calculations to describe the geometry of the surface.
 
-A 2D-derived polynomial surface of the third degree is fitted to the elevation map of a tile to model its shape [@Shihavuddin:2014]. The equation for this surface is:
+A 2D-derived polynomial surface of the third degree is fitted to the depth-map of a tile to model its shape [@Shihavuddin:2014]. The equation for this surface is:
 
 $$f(x,y) = p_{1}+p_{2}x+p_{3}y+p_{4}x^{2}+p_{5}xy+p_{6}y^{2}+p_{7}x^{2}y+p_{8}xy^{2}+p_{9}y^{3}$$
 
 The nine coefficients of this polynomial ($p_1, ..., p_9$) are extracted through least-squares fitting and used as features [@Shihavuddin:2014].
 
-Additional statistical features are calculated from the elevation values ($z_i$) within a tile, including the standard deviation, skewness, and kurtosis [@Shihavuddin:2014]. With $z_m$ as the mean elevation, $S$ as the standard deviation, and $N$ as the number of data points, the skewness and kurtosis are calculated as:
+Additional statistical features are calculated from the depth values ($z_i$) within a tile, including the standard deviation, skewness, and kurtosis [@Shihavuddin:2014]. With $z_m$ as the mean depth, $S$ as the standard deviation, and $N$ as the number of data points, the skewness and kurtosis are calculated as:
 
 $$\text{Skewness} = \frac{\sum(z_i-z_m)^3}{(N-1)S^3}$$
 
 $$\text{Kurtosis} = \frac{\sum_{i=1}^{N}(z_{i}-z_{m})^{4}}{(N-1)S^{4}}$$
 
-With regards to surface curvature, the Gaussian ($G$) and mean ($M$) surface curvatures are first calculated from the partial derivatives of the elevation map where the two principal curvatures, $k_1$ and $k_2$, can then be derived [@Shihavuddin:2014]:
+With regards to surface curvature, the Gaussian ($G$) and mean ($M$) surface curvatures are first calculated from the partial derivatives of the depth map where the two principal curvatures, $k_1$ and $k_2$, can then be derived [@Shihavuddin:2014]:
 
 $$k_{1}=M+\sqrt{M^{2}-G}$$
 
