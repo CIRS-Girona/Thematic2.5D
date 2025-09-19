@@ -1,19 +1,19 @@
 # Baseline Model for Underwater Military Munitions (UWMM) Detection
 
-This project implements a baseline model for the detection of Under-Water Military Munitions (UWMM), replicating the methodology presented in the paper "Improved supervised classification of underwater military munitions using height features derived from optical imagery" by Gleason et al. (2015). This Python implementation is used to process and analyze different data modalities, including 2D imagery, 3D depth data, and a combined 2.5D representation, to evaluate their effectiveness in identifying Unexploded Ordnance (UXO) in underwater environments.
+This project implements a baseline model for the detection of Under-Water Military Munitions (UWMM), replicating the methodology presented in the paper "Improved supervised classification of underwater military munitions using height features derived from optical imagery" by Gleason et al. (2015). This Python implementation is used to process and analyze different data modalities, including optical imagery (2D), geometric data (3D), and a combined 2.5D representation, to evaluate their effectiveness in identifying Unexploded Ordnance (UXO) in underwater environments.
 
 ## Purpose
 
 The primary objectives of this project are to:
 
 * Replicate the findings of Gleason et al. (2015) using Python-based tools.
-* Compare the performance of SVM models trained on 2D image data, 3D depth data, and combined texture and depth data (2.5D) for UWMM detection.
+* Compare the performance of SVM models trained on 2D-derived features (color, texture), 3D-derived features (curvature, rugosity), and combined optical and depth features (2.5D) for UWMM detection.
 * Establish a modular framework for building datasets, training classification models, and conducting inference for UWMM detection tasks.
 
 ## Key Features
 
 * **Dataset Generation:** Processes original image, depth, and mask data to create training patches.
-* **Multi-Modal Data Handling:** Supports the use of 2D imagery, 3D depth data, and combined 2.5D data for model training and evaluation.
+* **Multi-Modal Data Handling:** Supports the use of optical imagery and depth information for model training and evaluation.
 * **SVM Classification:** Implements SVM models for classifying potential UWMM based on extracted features.
 * **Trainable Models:** Provides functionality to train classification models on the generated dataset.
 * **Inference Pipeline:** Enables the application of trained models to new underwater imagery for UXO detection.
@@ -67,7 +67,7 @@ Data files within each subdirectory should have the same exact name - excluding 
 
 **Output:**
 
-Processed image patches (both 2D and 3D representations) will be saved in the `dataset_dir` under subfolders labeled 'background' and the different class names present in the mask.
+Processed image patches (both optical and depth representations) will be saved in the `dataset_dir` under subfolders labeled 'background' and the different class names present in the mask.
 
 ### 2. Model Training
 
@@ -116,9 +116,9 @@ The evaluation results will be saved in a file named `meanIoU.txt` located withi
 
 The experimental results, consistent with the findings of Gleason et al. (2015), highlight the varying performance of models trained on different data modalities:
 
-* **2D Model:** Models trained solely on 2D imagery exhibited a tendency to misclassify non-UXO objects, such as scales placed in the scene for measurement or rusted chains lying on the sea floor, as UXOs.
-* **3D Model:** Models trained exclusively on 3D depth information demonstrated a high false positive rate, often identifying structures with similar shapes to UXOs as potential targets. These models also struggled with accurately classifying actual UXOs in some instances.
-* **2.5D Model:** The model trained on the combined 2.5D data (integrating both 2D and 3D information) achieved the best overall performance. It significantly reduced the number of false positives compared to the 2D and 3D models. However, the 2.5D model did not perfectly capture and classify all UXOs present in the test data.
+* **2D Model:** Models trained solely on optical imagery exhibited a tendency to misclassify non-UXO objects, such as scales placed in the scene for measurement or rusted chains lying on the sea floor, as UXOs.
+* **3D Model:** Models trained exclusively on depth information demonstrated a high false positive rate, often identifying structures with similar shapes to UXOs as potential targets. These models also struggled with accurately classifying actual UXOs in some instances.
+* **2.5D Model:** The model trained on the combined 2.5D data (integrating both optical and geometric information) achieved the best overall performance. It significantly reduced the number of false positives compared to the 2D and 3D models. However, the 2.5D model did not perfectly capture and classify all UXOs present in the test data.
 
 The following table provides visual examples of the model outputs for different data modalities on representative image patches:
 

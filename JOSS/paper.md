@@ -51,13 +51,13 @@ The presence of underwater military munitions (UWMM) in coastal and marine envir
 - **Inference and Evaluation:** A complete inference pipeline to generate prediction masks on new data and quantitative evaluation using mean Intersection over Union (mIoU).
 - **Modularity:** A flexible, configuration-driven framework allowing integration of new features, models, and data modalities.
 
-`UWMM-Baseline` is designed for researchers, oceanographers, and environmental engineers working on UWMM detection, as well as educators teaching computer vision or marine science. It integrates with popular scientific Python libraries and supports workflows for both research and practical applications, such as seabed surveys and environmental monitoring.
+`UWMM-Baseline` is designed for researchers, oceanographers, and environmental engineers working on UWMM detection, as well as educators teaching computer vision or marine science. It integrates with popular scientific Python libraries and supports workflows for both research and practical applications, such as seabed surveys and environmental monitoring. This package provides a modern implementation of @Gleason:2015 as a baseline benchmark for evaluating semantic segmentation performance on UWMMs.
 
 # Statement of Need
 
 UWMM detection is a pressing challenge in marine environments, where legacy munitions from military activities contaminate coastlines and pose risks to ecosystems and human safety. Traditional detection methods, such as acoustic or optical imagery, are often limited by resolution or seabed complexity. Optical imagery, combined with depth-maps, offers high-resolution data for precise UWMM identification, as demonstrated by @Gleason:2015. However, existing software tools for UWMM detection are either proprietary, domain-specific, or lack the flexibility to handle multi-modal data in a unified framework.
 
-`UWMM-Baseline` addresses this gap by providing a free, open-source, and modular Python package that implements established UWMM classification techniques using modern libraries. Unlike general-purpose computer vision libraries, `UWMM-Baseline` is tailored for underwater environments, incorporating domain-specific preprocessing and feature extraction (e.g., rugosity, curvature from depth-maps).
+`UWMM-Baseline` addresses this gap by providing a free, open-source, and modern implementation of @Gleason:2015, an established UWMM classification model for semantic segmentation. This package serves as a baseline benchmark for evaluating the performance of machine learning UWMM classifiers. It provides a reliable benchmark against which the performance gains of novel algorithms can be accurately measured and validated.
 
 The package’s modularity enables researchers to experiment with new features, classifiers, or data sources (e.g., sonar, stereo vision), while its accessibility supports educational use in courses on machine learning, oceanography, or environmental science. By providing a full pipeline from data ingestion to evaluation, `UWMM-Baseline` lowers barriers to entry for UWMM detection research, fostering innovation in environmental monitoring and remediation.
 
