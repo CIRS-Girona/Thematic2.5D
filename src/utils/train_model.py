@@ -55,9 +55,9 @@ def train_model(dataset_dir: str, features_dir: str, models_dir: str, results_di
     y_pred = model.predict(X_test)
 
     if binary_mode:
-        datafile_name = f"{model.name}_{dimension}D_binary"
+        datafile_name = f"{model.name}{dimension}_binary"
     else:
-        datafile_name = f"{model.name}_{dimension}D"
+        datafile_name = f"{model.name}{dimension}"
 
     report = classification_report(y_test, y_pred, zero_division=0)
     print(report) # Print to console

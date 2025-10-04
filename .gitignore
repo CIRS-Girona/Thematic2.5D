@@ -9,6 +9,7 @@ jats/
 *.pkl
 *.msgpack
 *.large.*
+*.bk.*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

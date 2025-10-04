@@ -25,7 +25,7 @@ train_model:
   binary_mode: false                    # Whether to train the model as a binary classifier
   test_size: 0.1                        # Fraction of the data to use for the test set.
   n_components: 500                     # Number of components for Nystroem kernel approximation.
-  use_saved_features: true              # If `true`, loads features from `features_dir`; if `false`, extracts features from the dataset in `dataset_dir`.
+  use_saved_features: false             # If `true`, loads features from `features_dir`; if `false`, extracts features from the dataset in `dataset_dir`.
   subset_size: 0                        # If > 0, uses a random subset of this size for feature extraction/training (useful for quick tests).
   dimension: '25'                       # Specifies which data modality to use for training:
                                         # '2' for 2D (image), '3' for 3D (depth), '25' for 2.5D (both).
