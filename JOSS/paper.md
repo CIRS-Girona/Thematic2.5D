@@ -18,9 +18,12 @@ authors:
     surname: Rajani
     orcid: 0000-0002-2541-2787
     affiliation: 1
+  - given-names: Ahmed
+    surname: Alketbi
+    affiliation: 2
   - given-names: Arthur
     surname: Gleason
-    affiliation: 2
+    affiliation: 3
   - given-names: Nuno
     surname: Gracias
     orcid: 0000-0002-4675-9595
@@ -30,8 +33,10 @@ affiliations:
   - name: University of Girona, Spain
     index: 1
     ror: 01xdxns91
-  - name: University of Miami, USA
+  - name: Technology Innovation Institute, UAE
     index: 2
+  - name: University of Miami, USA
+    index: 3
 
 date: 04 September 2025
 
