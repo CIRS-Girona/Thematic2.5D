@@ -24,6 +24,29 @@ The primary objectives of this project are to:
 
 This section outlines the steps required to use this project. Ensure you have the necessary Python environment and dependencies installed.
 
+### 0. Installation and Testing
+
+This step provides instruction on how to install the project and test the models on the given samples.
+
+**Setting Up the Project:**
+
+This project has been solely tested on Python version 3.12. It is recommended that a virtual environment is used when running the pipeline. The following is one approach to setup the project using Python's `venv` environment:
+
+```bash
+python -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
+```
+
+**Testing the Pipeline:**
+
+A testing script along with data samples organized in the required format are provided in the `tests/` directory. Before running the `test.py` script, please ensure that all the paths found in the config file are pointing correctly to the provided sample dataset and that the UXO codes are unchanged. The default config file is already setup to be run using the `test.py` script from the get-go.
+
+Please make sure that the current working directory is the root directory of the repository before running the `test.py` script. The script can be run using the following command:
+
+```bash
+python tests/test.py
+```
+
 ### 1. Dataset Creation
 
 This step involves processing the original image/depth/mask data to generate training patches.
