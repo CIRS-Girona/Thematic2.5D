@@ -82,7 +82,7 @@ if __name__ == "__main__":
             elif os.path.exists(f"{image_path}.png") and os.path.isfile(f"{image_path}.png"):
                 image_path = f"{image_path}.png"
             else:
-                raise FileNotFoundError("Images are neither in jpg or png format")
+                raise FileNotFoundError(f"Corresponding image {label} couldn't be found in jpg or png format.")
 
             args.append((
                 image_path,
@@ -134,7 +134,7 @@ if __name__ == "__main__":
                 del mask_gt, mask_result
                 gc.collect()
 
-            with open(f"{curr_dir}/meanIoU.txt", 'w') as f:
+            with open(f"{results_dir}/{dir}-mIoU.txt", 'w') as f:
                 f.write(f"Average mIoU score: {np.mean(tuple(miou_scores.values()))}\n\n")
                 
                 for label, miou_score in miou_scores.items():

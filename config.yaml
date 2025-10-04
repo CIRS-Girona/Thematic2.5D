@@ -3,44 +3,44 @@ uxo_start_code: 5
 max_uxo_code: 8
 
 directories:
-  input_dir: 'temp/data'             # Directory containing the input tiled data (images, depths, masks).
-  dataset_dir: 'data/dataset'        # Directory where the processed dataset patches will be saved.
-  results_dir: 'data/results'        # Directory to save classification reports and inference output images.
-  models_dir: 'data/models'          # Directory to save trained model files.
-  features_dir: 'data/features'      # Directory to save extracted features.
+  input_dir: tests/samples              # Directory containing the input tiled data (images, depths, masks).
+  dataset_dir: tests/data/dataset       # Directory where the processed dataset patches will be saved.
+  results_dir: tests/data/results       # Directory to save classification reports and inference output images.
+  models_dir: tests/data/models         # Directory to save trained model files.
+  features_dir: tests/data/features     # Directory to save extracted features.
 
 create_dataset:
-  enabled: false                       # Set to `true` to enable dataset creation.
-  bg_per_img: 75                       # Maximum number of background patches to extract per input image.
-  thread_count: 64                     # Number of threads to use for parallel processing.
-  uxo_sample_rate: 0.0001              # Fraction of UXO pixels to sample as centers for potential UXO patches.
-  uxo_threshold: 0.4                   # Minimum fraction of UXO pixels required within a window for it to be labeled as a UXO patch.
-  invalid_threshold: 0.01              # Maximum fraction of invalid pixels (e.g., masked out areas) in a patch; patches exceeding this are skipped.
-  window_size: 400                     # Size (in pixels) of the square window extracted from the original image around a sample point.
-  patch_size: 128                      # Size (in pixels) to which the extracted window is resized to create the final patch.
-  angles: [0, 90, 180, 270]            # Angles (in degrees) to rotate UXO patches for data augmentation.
+  enabled: true                         # Set to `true` to enable dataset creation.
+  bg_per_img: 75                        # Maximum number of background patches to extract per input image.
+  thread_count: 1                       # Number of threads to use for parallel processing.
+  uxo_sample_rate: 0.0001               # Fraction of UXO pixels to sample as centers for potential UXO patches.
+  uxo_threshold: 0.4                    # Minimum fraction of UXO pixels required within a window for it to be labeled as a UXO patch.
+  invalid_threshold: 0.01               # Maximum fraction of invalid pixels (e.g., masked out areas) in a patch; patches exceeding this are skipped.
+  window_size: 400                      # Size (in pixels) of the square window extracted from the original image around a sample point.
+  patch_size: 128                       # Size (in pixels) to which the extracted window is resized to create the final patch.
+  angles: [0, 90, 180, 270]             # Angles (in degrees) to rotate UXO patches for data augmentation.
 
 train_model:
-  enabled: false                       # Set to `true` to enable model training.
-  binary_mode: false                   # Whether to train the model as a binary classifier
-  test_size: 0.1                       # Fraction of the data to use for the test set.
-  n_components: 500                    # Number of components for Nystroem kernel approximation.
-  use_saved_features: true             # If `true`, loads features from `features_dir`; if `false`, extracts features from the dataset in `dataset_dir`.
-  subset_size: 0                       # If > 0, uses a random subset of this size for feature extraction/training (useful for quick tests).
-  dimension: '25'                      # Specifies which data modality to use for training:
-                                       # '2' for 2D (image), '3' for 3D (depth), '25' for 2.5D (both).
+  enabled: true                         # Set to `true` to enable model training.
+  binary_mode: false                    # Whether to train the model as a binary classifier
+  test_size: 0.1                        # Fraction of the data to use for the test set.
+  n_components: 500                     # Number of components for Nystroem kernel approximation.
+  use_saved_features: true              # If `true`, loads features from `features_dir`; if `false`, extracts features from the dataset in `dataset_dir`.
+  subset_size: 0                        # If > 0, uses a random subset of this size for feature extraction/training (useful for quick tests).
+  dimension: '25'                       # Specifies which data modality to use for training:
+                                        # '2' for 2D (image), '3' for 3D (depth), '25' for 2.5D (both).
 
 run_inference:
-  enabled: false                       # Set to `true` to enable inference.
-  image_path: temp/images              # Path to the input image directory for inference.
-  depth_path: temp/depths              # Path to the input depth map directory for inference.
-  region_size: 400                     # Parameter for superpixel segmentation (average size of superpixels).
-  window_size: 400                     # Size of the window extracted around superpixel centroids/subdivisions for feature extraction during inference.
-  patch_size: 128                      # Size to which the extracted inference window is resized.), '25' for 2.5D (both).
-  subdivide_axis: 3                    # Number of subdivisions along each axis around a superpixel centroid. Used for neighbor polling.
-  threshold: 4                         # Minimum number of positive predictions within a superpixel region required to classify the region as UXO.
-  thread_count: 128                    # Number of threads to use for parallel processing.
+  enabled: true                         # Set to `true` to enable inference.
+  image_path: tests/samples/18mm/images # Path to the input image directory for inference.
+  depth_path: tests/samples/18mm/depths # Path to the input depth map directory for inference.
+  region_size: 400                      # Parameter for superpixel segmentation (average size of superpixels).
+  window_size: 400                      # Size of the window extracted around superpixel centroids/subdivisions for feature extraction during inference.
+  patch_size: 128                       # Size to which the extracted inference window is resized.), '25' for 2.5D (both).
+  subdivide_axis: 3                     # Number of subdivisions along each axis around a superpixel centroid. Used for neighbor polling.
+  threshold: 4                          # Minimum number of positive predictions within a superpixel region required to classify the region as UXO.
+  thread_count: 1                       # Number of threads to use for parallel processing.
 
 evaluate_results:
-  enabled: false                       # Set to `true` to evaluate inference results using mean IoU.
-  mask_path: temp/masks                # Path to the input masks directory.
+  enabled: true                        # Set to `true` to evaluate inference results using mean IoU.
+  mask_path: tests/samples/18mm/masks  # Path to the input masks directory.
