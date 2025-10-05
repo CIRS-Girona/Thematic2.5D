@@ -178,6 +178,18 @@ The following table provides visual examples of the model outputs for different 
   </tr>
 </table>
 
+## How to Contribute
+
+We welcome contributions to this project! If you'd like to help improve the UWMM baseline model, please follow these steps:
+
+1.  **Open a Ticket/Issue** in the repository describing the changes or fixes you plan to make. This helps coordinate efforts and track the development process.
+2.  **Fork** the repository and create a new branch for your feature or fix.
+3.  **Make your changes** and ensure the code adheres to the existing style and conventions.
+4.  **Write and run unit tests** to cover your changes.
+5.  **Open a Pull Request (PR)** to the main repository's `main` branch.
+
+In your pull request, please provide a clear summary of your changes and any relevant context. This will help us review and merge your contribution quickly.
+
 ## References
 
 * Shihavuddin, A. S. M., Gracias, N., Garcia, R., Gleason, A. C. R., & Gintert, B. (2013). Image-Based Coral Reef Classification and Thematic Mapping. *Remote Sensing*, *5*(4), 1809-1841. [https://doi.org/10.3390/rs5041809](https://doi.org/10.3390/rs5041809)
