@@ -1,5 +1,5 @@
 ---
-title: 'UWMM-Baseline: A Python Package for Supervised Classification of Underwater Military Munitions Using Multi-Modal Data'
+title: 'UWMM-Baseline: A Multi-Modal Supervised Classification Baseline for Underwater Military Munitions'
 
 tags:
   - Python
