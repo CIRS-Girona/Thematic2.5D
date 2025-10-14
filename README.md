@@ -1,24 +1,26 @@
-# Baseline Model for Underwater Military Munitions (UWMM) Detection
+# Thematic2.5D: A Toolkit for Evaluating 2D and 3D Feature Effects in Supervised Classification
 
+![Python](https://img.shields.io/badge/python-3.12-blue.svg)](https://docs.python.org/3/whatsnew/3.12.html)
 [![Unit Tests](https://github.com/CIRS-Girona/uwmm-baseline/actions/workflows/python-app.yml/badge.svg)](https://github.com/CIRS-Girona/uwmm-baseline/actions/workflows/python-app.yml)
 
-This project implements a baseline model for the detection of Under-Water Military Munitions (UWMM), replicating the methodology presented in the paper "Improved supervised classification of underwater military munitions using height features derived from optical imagery" by Gleason et al. (2015). This Python implementation is used to process and analyze different data modalities, including optical imagery (2D), geometric data (3D), and a combined 2.5D representation, to evaluate their effectiveness in identifying Unexploded Ordnance (UXO) in underwater environments.
+This project implements a modular toolkit for supervised classification and thematic mapping, inspired by the methodology presented in the paper "Improved supervised classification of underwater military munitions using height features derived from optical imagery" by Gleason et al. (2015). The package processes and analyzes multi-modal data, including optical imagery (2D), geometric data (3D), and a combined 2.5D representation, to evaluate the effectiveness of different feature modalities in classifying objects in complex environments.
 
 ## Purpose
 
 The primary objectives of this project are to:
 
 * Replicate the findings of Gleason et al. (2015) using Python-based tools.
-* Compare the performance of SVM models trained on 2D-derived features (color, texture), 3D-derived features (curvature, rugosity), and combined optical and depth features (2.5D) for UWMM detection.
-* Establish a modular framework for building datasets, training classification models, and conducting inference for UWMM detection tasks.
+* Provide a flexible framework for supervised classification and thematic mapping using multi-modal data.
+* Compare the performance of SVM models trained on 2D-derived features (color, texture), 3D-derived features (curvature, rugosity), and combined optical and depth features (2.5D) to assess their relative contributions to classification accuracy.
+* Establish a modular framework for building datasets, training classification models, and conducting inference tasks.
 
 ## Key Features
 
 * **Dataset Generation:** Processes original image, depth, and mask data to create training patches.
-* **Multi-Modal Data Handling:** Supports the use of optical imagery and depth information for model training and evaluation.
-* **SVM Classification:** Implements SVM models for classifying potential UWMM based on extracted features.
-* **Trainable Models:** Provides functionality to train classification models on the generated dataset.
-* **Inference Pipeline:** Enables the application of trained models to new underwater imagery for UXO detection.
+* **Multi-Modal Data Handling:** Supports optical imagery and depth information for model training and evaluation.
+* **SVM Classification:** Implements SVM models for classifying objects based on extracted features.
+* **Trainable Models:** Provides functionality to train classification models on generated datasets.
+* **Inference Pipeline:** Enables the application of trained models to new imagery for object detection and thematic mapping.
 
 ## Getting Started
 
@@ -30,7 +32,7 @@ This step provides instruction on how to install the project and test the models
 
 **Setting Up the Project:**
 
-This project has been solely tested on Python version 3.12. It is recommended that a virtual environment is used when running the pipeline. The following is one approach to setup the project using Python's `venv` environment:
+It is recommended that a virtual environment is used when running the pipeline. The following is one approach to setup the project using Python's `venv` environment:
 
 ```bash
 python -m venv venv && source venv/bin/activate
@@ -39,7 +41,7 @@ pip install -r requirements.txt
 
 **Testing the Pipeline:**
 
-A testing script along with data samples organized in the required format are provided in the `tests/` directory. Before running the `test.py` script, please ensure that all the paths found in the config file are pointing correctly to the provided sample dataset and that the UXO codes are unchanged. The default config file is already setup to be run using the `test.py` script from the get-go.
+A testing script along with data samples organized in the required format are provided in the `tests/` directory. Before running the `test.py` script, please ensure that all the paths found in the config file are pointing correctly to the provided sample dataset and that the object codes are unchanged. The default config file is already setup to be run using the `test.py` script from the get-go.
 
 Please make sure that the current working directory is the root directory of the repository before running the `test.py` script. The script can be run using the following command:
 
@@ -57,7 +59,7 @@ The project expects original data to be organized as images within a directory s
 
 * `images`: Contains original 2D imagery.
 * `depths`: Contains corresponding depth maps, formatted as 1-channel, 16-bit PNGs.
-* `masks`: Contains corresponding masks indicating the location of potential UXOs, formatted as 1-channel, 8-bit PNGs.
+* `masks`: Contains corresponding masks indicating the location of target objects, formatted as 1-channel, 8-bit PNGs.
 
 ***Example:***
 
@@ -110,7 +112,7 @@ The training process utilizes the dataset created in the previous step, located 
 
 ### 3. Inference
 
-This step involves using a trained model to detect potential UXOs in a new, unseen image.
+This step involves using a trained model to detect objects in a new, unseen image.
 
 **Input:**
 
@@ -139,7 +141,7 @@ The evaluation results will be saved in a file named `meanIoU.txt` located withi
 
 ## Results
 
-The experimental results, consistent with the findings of Gleason et al. (2015), highlight the varying performance of models trained on different data modalities:
+The experimental results, consistent with the findings of Gleason et al. (2015), highlight the varying performance of models trained on different data modalities for classifying unexploded ordnances (UXOs):
 
 * **2D Model:** Models trained solely on optical imagery exhibited a tendency to misclassify non-UXO objects, such as scales placed in the scene for measurement or rusted chains lying on the sea floor, as UXOs.
 * **3D Model:** Models trained exclusively on depth information demonstrated a high false positive rate, often identifying structures with similar shapes to UXOs as potential targets. These models also struggled with accurately classifying actual UXOs in some instances.
