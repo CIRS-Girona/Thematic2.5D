@@ -1,6 +1,6 @@
 # Thematic2.5D: A Toolkit for Evaluating 2D and 3D Feature Effects in Supervised Classification
 
-![Python](https://img.shields.io/badge/python-3.12-blue.svg)](https://docs.python.org/3/whatsnew/3.12.html)
+[![Python](https://img.shields.io/badge/python-3.12-blue.svg)](https://docs.python.org/3/whatsnew/3.12.html)
 [![Unit Tests](https://github.com/CIRS-Girona/uwmm-baseline/actions/workflows/python-app.yml/badge.svg)](https://github.com/CIRS-Girona/uwmm-baseline/actions/workflows/python-app.yml)
 
 This project implements a modular toolkit for supervised classification and thematic mapping, inspired by the methodology presented in the paper "Improved supervised classification of underwater military munitions using height features derived from optical imagery" by Gleason et al. (2015). The package processes and analyzes multi-modal data, including optical imagery (2D), geometric data (3D), and a combined 2.5D representation, to evaluate the effectiveness of different feature modalities in classifying objects in complex environments.
