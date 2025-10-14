@@ -1,11 +1,10 @@
 ---
-title: 'UWMM-Baseline: A Multi-Modal Supervised Classification Baseline for Underwater Military Munitions'
+title: 'Thematic2.5D: A Toolkit for Evaluating 2D and 3D Feature Effects in Supervised Classification'
 
 tags:
   - Python
-  - oceanography
+  - thematic mapping
   - machine learning
-  - underwater munitions
   - computer vision
   - structure-from-motion
 
@@ -38,7 +37,7 @@ affiliations:
   - name: University of Miami, USA
     index: 3
 
-date: 04 September 2025
+date: 14 October 2025
 
 bibliography: paper.bib
 
@@ -46,54 +45,54 @@ bibliography: paper.bib
 
 # Summary
 
-The presence of underwater military munitions (UWMM) in coastal and marine environments poses significant environmental and safety risks. Accurate detection and classification of UWMM are critical for remediation efforts, requiring robust methods to process multi-modal data, such as optical imagery and 3D reconstructions. UWMM detection leverages computer vision, machine learning, and 3D modeling to identify munitions against complex seabed backgrounds. Existing approaches, such as those only using image features (2D), often suffer from high false positive rates, necessitating the integration of geometric data (3D) to improve accuracy.
+The accurate detection and classification of objects in complex environments is a critical task across various domains, requiring robust methods to process multi-modal data, such as optical imagery and 3D reconstructions. Object detection often leverages computer vision, machine learning, and 3D modeling to distinguish targets from complex backgrounds. Existing approaches relying solely on 2D image features often suffer from high false positive rates due to background variability, necessitating the integration of 3D geometric data to enhance accuracy.
 
-`UWMM-Baseline` is an open-source Python package designed for the supervised classification of UWMMs using multi-modal data, including optical imagery and depth-maps derived from 3D reconstructions of the scene. Building on the methodology of @Gleason:2015, the package implements a modular pipeline for dataset creation, feature extraction, classification, and evaluation. Key features include:
+`Thematic2.5D` is an open-source Python package designed for supervised classification using multi-modal data, including optical imagery and depth-maps derived from 3D reconstructions. Building on the methodology of @Gleason:2015, the package provides a modular pipeline for dataset creation, feature extraction, classification, and evaluation. Its key features include:
 
-- **Dataset Creation:** Automated tile extraction and labeling from underwater imagery and depth-maps.
+- **Dataset Creation:** Automated tile extraction and labeling from imagery and depth-maps for diverse applications.
 - **Feature Extraction:** Extraction of 2D-derived (color, texture) and 3D-derived (curvature, rugosity) features, which can be combined into a hybrid 2.5D feature set.
-- **Classification:** Support for binary (UWMM vs. background) and multi-class (UWMM type) classification using Support Vector Machines (SVM).
+- **Classification:** Support for binary (object vs. background) and multi-class classification using Support Vector Machines (SVM).
 - **Inference and Evaluation:** A complete inference pipeline to generate prediction masks on new data and quantitative evaluation using mean Intersection over Union (mIoU).
 - **Modularity:** A flexible, configuration-driven framework allowing integration of new features, models, and data modalities.
 
-`UWMM-Baseline` is designed for researchers, oceanographers, and environmental engineers working on UWMM detection, as well as educators teaching computer vision or marine science. It integrates with popular scientific Python libraries and supports workflows for both research and practical applications, such as seabed surveys and environmental monitoring. This package provides a modern implementation of @Gleason:2015 as a baseline benchmark for evaluating semantic segmentation performance on UWMMs.
+`Thematic2.5D` serves as a versatile toolkit for researchers, data scientists, and educators working in computer vision, machine learning, or thematic mapping. It integrates with popular scientific Python libraries and supports workflows for both research and practical applications, such as environmental surveys, urban mapping, or industrial inspections. The package provides a classical framework to evaluate the relative contributions of 2D and 3D feature modalities, enabling users to quantify the impact of integrating geometric data with traditional image features for improved classification performance.
 
 # Statement of Need
 
-UWMM detection is a pressing challenge in marine environments, where legacy munitions from military activities contaminate coastlines and pose risks to ecosystems and human safety. Traditional detection methods, such as acoustic or optical imagery, are often limited by resolution or seabed complexity. Optical imagery, combined with depth-maps, offers high-resolution data for precise UWMM identification, as demonstrated by @Gleason:2015. However, existing software tools for UWMM detection are either proprietary, domain-specific, or lack the flexibility to handle multi-modal data in a unified framework.
+Object detection in complex environments is a widespread challenge across fields like environmental monitoring, urban planning, and industrial inspection, where distinguishing objects from varied backgrounds is critical. Traditional detection methods, such as those using acoustic or optical imagery, are often limited by resolution or background complexity. Optical imagery combined with depth-maps offers high-resolution data for precise object identification, as demonstrated by @Gleason:2015. However, existing software tools are often proprietary, domain-specific, or lack the flexibility to handle multi-modal data in a unified framework.
 
-`UWMM-Baseline` addresses this gap by providing a free, open-source, and modern implementation of @Gleason:2015, an established UWMM classification model for semantic segmentation. This package serves as a baseline benchmark for evaluating the performance of machine learning UWMM classifiers. It provides a reliable benchmark against which the performance gains of novel algorithms can be accurately measured and validated.
+`Thematic2.5D` addresses this gap by providing a free, open-source Python toolkit that implements a classical supervised classification pipeline, inspired by @Gleason:2015, for semantic segmentation and thematic mapping. The package serves as a robust framework for evaluating the effectiveness of 2D-derived (e.g., color, texture) versus 3D-derived (e.g., curvature, rugosity) features, allowing researchers to assess the relative contributions of these modalities to classification accuracy.
 
-The package’s modularity enables researchers to experiment with new features, classifiers, or data sources (e.g., sonar, stereo vision), while its accessibility supports educational use in courses on machine learning, oceanography, or environmental science. By providing a full pipeline from data ingestion to evaluation, `UWMM-Baseline` lowers barriers to entry for UWMM detection research, fostering innovation in environmental monitoring and remediation.
+Its modularity enables experimentation with new features, classifiers, or data sources (e.g., sonar, stereo vision), while its accessibility supports educational use in courses on machine learning, computer vision, or data science. By offering a comprehensive pipeline from data ingestion to evaluation, `Thematic2.5D` lowers barriers to entry for multi-modal classification research, fostering innovation across diverse applications.
 
 # Background
 
-![Inference output of the UWMM baseline model. The leftmost image represents the output of the model trained exclusively on 2D-derived features, the central image shows the output of the model trained exclusively on 3D-derived features, and the rightmost image illustrates the output of the model trained on 2.5D extracted features. \label{fig:inference}](inference.jpg)
+![Inference output of the Thematic2.5D model trained to detect underwater military munitions (UWMM). The leftmost image represents the output of the model trained exclusively on 2D-derived features, the central image shows the output of the model trained exclusively on 3D-derived features, and the rightmost image illustrates the output of the model trained on 2.5D extracted features. \label{fig:inference}](inference.jpg)
 
-The detection of UWMM in underwater environments involves processing optical imagery to identify munitions against varied seabed backgrounds (e.g., coral reefs, seagrass). The core challenge lies in distinguishing human-made objects from similarly shaped or textured natural features. It was demonstrated that while 2D-derived features (color, texture) achieve moderate accuracy (>80% for binary classification), they suffer from high false positives due to background complexity [@Gleason:2015]. Incorporating 3D-derived features (e.g. curvature, rugosity) from depth-maps significantly improves accuracy (89-95%) and reduces false positives, as these features capture the distinct geometric properties of munitions. This combined, hybrid approach is referred to as the 2.5D approach.
+Object detection in complex scenes involves processing optical imagery to identify targets against varied backgrounds (e.g., natural landscapes, urban settings). The core challenge lies in distinguishing objects from similarly shaped or textured background elements. It was demonstrated that while 2D-derived features (color, texture) achieve moderate accuracy (>80% for binary classification), they suffer from high false positives due to background complexity [@Gleason:2015]. Incorporating 3D-derived features (e.g., curvature, rugosity) from depth-maps significantly improves accuracy (89-95%) and reduces false positives by capturing distinct geometric properties. This combined, hybrid approach, referred to as the 2.5D approach, enhances classification performance by leveraging both visual and geometric information.
 
-The methodology is broken down into a multi-stage pipeline. First, large survey images are processed into smaller, manageable tiles. This approach allows the model to learn local, high-resolution features and creates a large, diverse dataset suitable for training supervised machine learning models. The general workflow is as follows:
+The `Thematic2.5D` pipeline provides a classical framework to systematically evaluate the contributions of 2D and 3D features. The methodology is broken down into a multi-stage pipeline. First, large survey images are processed into smaller, manageable tiles. This approach allows the model to learn local, high-resolution features and creates a large, diverse dataset suitable for training supervised machine learning models. The general workflow is as follows:
 
 1.  **Dataset Creation:** Optical images, depth maps, and ground-truth masks are used to generate a labeled dataset of image tiles.
 2.  **Feature Extraction:** A comprehensive set of 2D-derived and 3D-derived features is extracted from each tile.
 3.  **Model Training:** A classifier, such as an SVM, is trained on the extracted features.
-4.  **Inference:** The trained model is used to predict the locations of UWMM in new, unseen images.
+4.  **Inference:** The trained model is used to predict the locations of objects in new, unseen images.
 5.  **Evaluation:** The model's predictions are compared against ground-truth data to assess performance quantitatively.
 
-This project implements this entire workflow in a configurable and automated pipeline, building on the foundational work of @Gleason:2015. to provide an accessible software tool.
+This project implements this entire workflow in a configurable and automated pipeline, building on the foundational work of @Gleason:2015, to provide an accessible software tool for evaluating feature modalities in supervised classification.
 
 # Methodology
 
-![The implemented classification framework is depicted in the above flowchart. The left section outlines the primary stages of the pipeline, while the right section details the specific components and features utilized in each stage. \label{fig:flowchart}](flowchart.jpg)
+![The implemented classification framework is depicted in the above flowchart. The left section outlines the primary stages of the pipeline, while the right section details the specific components and features utilized in each stage. \label{fig:flowchart}](flowchart.png)
 
-The `UWMM-Baseline` pipeline processes underwater images, depth-maps, and masks to generate a labeled dataset of uniformly sized tiles for training and testing. It identifies potential UWMM and background locations using masks, extracting corresponding square tiles from image and depth data. To address class imbalance, a fixed number of background tiles are sampled per image, and only a subset of available UWMM pixels are used as tile centers. Data augmentation is applied by rotating UWMM tiles at multiple angles.
+The `Thematic2.5D` pipeline processes images, depth-maps, and masks to generate a labeled dataset of uniformly sized tiles for training and testing. It identifies potential object and background locations using masks, extracting corresponding square tiles from image and depth data. To address class imbalance, a fixed number of background tiles are sampled per image, and only a subset of available object pixels are used as tile centers. Data augmentation is applied by rotating object tiles at multiple angles.
 
 From the processed tiles, 2D-derived and 3D-derived features are extracted, extending the feature set proposed by @Shihavuddin:2014 and @Gleason:2015:
 
 -   **2D-derived Features (from optical images):**
     -   **Color Histograms:** HSV color distributions to capture seabed and UWMM appearance [@Shihavuddin:2013].
     -   **Local Binary Patterns (LBP):** Texture descriptors robust to illumination changes [@lbp_algorithm].
-    -   **Gray Level Co-occurrence Matrix (GLCM):** Texture metrics (e.g., contrast, dissimilarity) for seabed characterization [@glcm_algorithm].
+    -   **Gray Level Co-occurrence Matrix (GLCM):** Texture metrics (e.g., contrast, dissimilarity) for background characterization [@glcm_algorithm].
     -   **Gabor Filters:** Edge and texture detection across multiple scales and orientations [@gabor_algorithm].
 
 -   **3D-derived Features (from depth maps):**
@@ -107,7 +106,7 @@ This implementation leverages standard Python libraries, including NumPy [@numpy
 
 ## Model Training and 3D-derived Feature Extraction
 
-The classification pipeline in `UWMM-Baseline` relies on feature extraction and SVM-based classification. For a tile $\mathbf{x} \in \mathbb{R}^{m \times n}$ (image) and corresponding depth-map $\mathbf{d} \in \mathbb{R}^{m \times n}$, the feature vector $\mathbf{f}_{2.5D}$ combines 2D-derived and 3D-derived features:
+The classification pipeline in `Thematic2.5D` relies on feature extraction and SVM-based classification. For a tile $\mathbf{x} \in \mathbb{R}^{m \times n}$ (image) and corresponding depth-map $\mathbf{d} \in \mathbb{R}^{m \times n}$, the feature vector $\mathbf{f}_{2.5D}$ combines 2D-derived and 3D-derived features:
 
 $$\mathbf{f}_{2.5D} = [\mathbf{f}_{2D}, \mathbf{f}_{3D}]$$
 
