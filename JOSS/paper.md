@@ -63,7 +63,7 @@ Object detection in complex environments is a widespread challenge across fields
 
 `Thematic2.5D` addresses this gap by providing a free, open-source Python toolkit that implements a classical supervised classification pipeline, inspired by @Gleason:2015, for semantic segmentation and thematic mapping. The package serves as a robust framework for evaluating the effectiveness of 2D-derived (e.g., color, texture) versus 3D-derived (e.g., curvature, rugosity) features, allowing researchers to assess the relative contributions of these modalities to classification accuracy.
 
-Its modularity enables experimentation with new features, classifiers, or data sources (e.g., sonar, stereo vision), while its accessibility supports educational use in courses on machine learning, computer vision, or data science. By offering a comprehensive pipeline from data ingestion to evaluation, `Thematic2.5D` lowers barriers to entry for multi-modal classification research, fostering innovation across diverse applications.
+By offering a comprehensive pipeline from data ingestion to evaluation, `Thematic2.5D` provides an accessible entry point for multi-modal classification research. The package's modularity enables experimentation with new features, classifiers, or data sources (e.g., sonar, stereo vision), while its accessibility supports educational use in courses on machine learning, computer vision, or data science.
 
 # Background
 
