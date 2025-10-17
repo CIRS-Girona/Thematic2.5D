@@ -90,7 +90,7 @@ The `Thematic2.5D` pipeline processes images, depth-maps, and masks to generate 
 From the processed tiles, 2D-derived and 3D-derived features are extracted, extending the feature set proposed by @Shihavuddin:2014 and @Gleason:2015:
 
 -   **2D-derived Features (from optical images):**
-    -   **Color Histograms:** HSV color distributions to capture seabed and UWMM appearance [@Shihavuddin:2013].
+    -   **Color Histograms:** HSV color distributions to capture background and object appearance [@Shihavuddin:2013].
     -   **Local Binary Patterns (LBP):** Texture descriptors robust to illumination changes [@lbp_algorithm].
     -   **Gray Level Co-occurrence Matrix (GLCM):** Texture metrics (e.g., contrast, dissimilarity) for background characterization [@glcm_algorithm].
     -   **Gabor Filters:** Edge and texture detection across multiple scales and orientations [@gabor_algorithm].
@@ -100,7 +100,7 @@ From the processed tiles, 2D-derived and 3D-derived features are extracted, exte
     -   **Curvatures and Normals:** Mean and Gaussian curvatures, shape index, curvedness, and surface normal vector statistics.
     -   **Symmetry Features:** Gabor filters applied to depth maps to capture structural symmetry.
 
-The classifier is implemented using a SVM [@svm_algorithm] with a radial basis function (RBF) kernel, approximated via the Nystroem method [@nystroem_algorithm]. The model supports training on 2D-derived, 3D-derived, or combined 2.5D feature sets. Prior to inference, superpixel segmentation [@superpixel_algorithm] identifies homogeneous regions in the input image. For each identified superpixel, a sliding window centered on its centroid is used to extract a series of overlapping tiles. These tiles are individually processed through the trained model to predict class labels. A neighborhood poll determines UWMM presence by evaluating whether the number of positive tile predictions within a region exceeds a predefined threshold. The final output is a segmentation mask indicating detected UWMM locations (see \autoref{fig:inference}).
+The classifier is implemented using a SVM [@svm_algorithm] with a radial basis function (RBF) kernel, approximated via the Nystroem method [@nystroem_algorithm]. The model supports training on 2D-derived, 3D-derived, or combined 2.5D feature sets. Prior to inference, superpixel segmentation [@superpixel_algorithm] identifies homogeneous regions in the input image. For each identified superpixel, a sliding window centered on its centroid is used to extract a series of overlapping tiles. These tiles are individually processed through the trained model to predict class labels. A neighborhood poll determines object presence by evaluating whether the number of positive tile predictions within a region exceeds a predefined threshold. The final output is a segmentation mask indicating detected objects locations (see \autoref{fig:inference}).
 
 This implementation leverages standard Python libraries, including NumPy [@numpy_library], OpenCV [@opencv_library], scikit-learn [@scikit-learn_library], scikit-image [@scikit-image_library], and SciPy [@scipy_library] for feature extraction, model training, and data processing.
 

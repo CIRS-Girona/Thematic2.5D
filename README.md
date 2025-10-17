@@ -182,7 +182,7 @@ The following table provides visual examples of the model outputs for different 
 
 ## How to Contribute
 
-We welcome contributions to this project! If you'd like to help improve the UWMM baseline model, please follow these steps:
+We welcome contributions to this project! If you'd like to help improve Thematic2.5D, please follow these steps:
 
 1.  **Open a Ticket/Issue** in the repository describing the changes or fixes you plan to make. This helps coordinate efforts and track the development process.
 2.  **Fork** the repository and create a new branch for your feature or fix.
