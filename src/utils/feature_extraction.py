@@ -86,7 +86,6 @@ def extract_gabor_features(image: np.ndarray) -> List[float]:
     Returns:
         A list of float values representing the concatenated Gabor features.
     """
-    # TODO: Use log gabor filters to speed up runtime (https://peterkovesi.com/matlabfns/PhaseCongruency/Docs/convexpl.html)
     feats = []
     for kernel in KERNELS:
         response_real = cv2.filter2D(src=image, ddepth=-1, kernel=np.real(kernel))
