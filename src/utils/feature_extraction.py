@@ -283,31 +283,71 @@ def extract_features(images_gray: List[np.ndarray], images_hsv: List[np.ndarray]
     ts: List[Thread] = []
 
     # Add color features
-    func = lambda: features.update({'gray': [extract_color_features(img) for img in images_gray]})
-    ts.append(Thread(target=logger, args=("Gray Color Features", time.perf_counter(), func)))
+    ts.append(Thread(target=logger,
+        args=(
+            "Gray Color Features",
+            time.perf_counter(),
+            lambda: features.update({'gray': [extract_color_features(img) for img in images_gray]})
+        )
+    ))
 
     # Add color HSV features
-    func = lambda: features.update({'hsv': [extract_color_features(img[:, :, 0]) for img in images_hsv]})
-    ts.append(Thread(target=logger, args=("HSV Color Features", time.perf_counter(), func)))
+    ts.append(Thread(target=logger,
+        args=(
+            "HSV Color Features",
+            time.perf_counter(),
+            lambda: features.update({'hsv': [extract_color_features(img[:, :, 0]) for img in images_hsv]})
+        )
+    ))
 
-    func = lambda: features.update({'lbp': [extract_lbp_features(img) for img in images_gray]})
-    ts.append(Thread(target=logger, args=("LBP Features", time.perf_counter(), func)))
+    ts.append(Thread(target=logger,
+        args=(
+            "LBP Features",
+            time.perf_counter(),
+            lambda: features.update({'lbp': [extract_lbp_features(img) for img in images_gray]})
+        )
+    ))
 
-    func = lambda: features.update({'glcm': [extract_glcm_features(img) for img in images_gray]})
-    ts.append(Thread(target=logger, args=("GLCM Features", time.perf_counter(), func)))
+    ts.append(Thread(target=logger,
+        args=(
+            "GLCM Features",
+            time.perf_counter(),
+            lambda: features.update({'glcm': [extract_glcm_features(img) for img in images_gray]})
+        )
+    ))
 
-    func = lambda: features.update({'gabor': [extract_gabor_features(img) for img in images_gray]})
-    ts.append(Thread(target=logger, args=("Gabor Features", time.perf_counter(), func)))
+    ts.append(Thread(target=logger,
+        args=(
+            "Gabor Features",
+            time.perf_counter(),
+            lambda: features.update({'gabor': [extract_gabor_features(img) for img in images_gray]})
+        )
+    ))
 
     if depth is not None:
-        func = lambda: features.update({'principal plane': [extract_principal_plane_features(d) for d in depth]})
-        ts.append(Thread(target=logger, args=("Principal Plane Features", time.perf_counter(), func)))
+        ts.append(Thread(target=logger,
+            args=(
+                "Principal Plane Features",
+                time.perf_counter(),
+                lambda: features.update({'principal plane': [extract_principal_plane_features(d) for d in depth]})
+            )
+        ))
 
-        func = lambda: features.update({'curvatures': [extract_curvatures_and_surface_normals(d) for d in depth]})
-        ts.append(Thread(target=logger, args=("Curvature and Surface Normal Features", time.perf_counter(), func)))
+        ts.append(Thread(target=logger,
+            args=(
+                "Curvature and Surface Normal Features",
+                time.perf_counter(),
+                lambda: features.update({'curvatures': [extract_curvatures_and_surface_normals(d) for d in depth]})
+            )
+        ))
 
-        func = lambda: features.update({'symmetry': [extract_gabor_features(d) for d in depth]})
-        ts.append(Thread(target=logger, args=("Symmetry Features", time.perf_counter(), func)))
+        ts.append(Thread(target=logger,
+            args=(
+                "Symmetry Features",
+                time.perf_counter(),
+                lambda: features.update({'symmetry': [extract_gabor_features(d) for d in depth]})
+            )
+        ))
 
     for t in ts:
         t.start()
