@@ -35,8 +35,10 @@ affiliations:
     ror: 01xdxns91
   - name: Technology Innovation Institute, UAE
     index: 2
+    ror: 001kv2y39
   - name: University of Miami, USA
     index: 3
+    ror: 02dgjyy92
 
 date: 14 October 2025
 
