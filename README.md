@@ -18,9 +18,9 @@ The primary objectives of this project are to:
 
 * **Dataset Generation:** Processes original image, depth, and mask data to create training patches.
 * **Multi-Modal Data Handling:** Supports optical imagery and depth information for model training and evaluation.
-* **SVM Classification:** Implements SVM models for classifying objects based on extracted features.
 * **Trainable Models:** Provides functionality to train classification models on generated datasets.
 * **Inference Pipeline:** Enables the application of trained models to new imagery for object detection and thematic mapping.
+* **Optical and Geometric Metric Calculation:** Allows for the computation of various optical and geometric measurements to provide for use in the analysis the provided datasets.
 
 ## Getting Started
 
@@ -87,6 +87,15 @@ input_dir/
         └── ...
 └── ...
 ```
+
+***Metric Pipeline Usage:***
+
+With regards to the usage of the metric pipeline, two additional files need to be present in the dataset folder undet the `input_dir` directory:
+
+* `info.yaml`: Contains the *Camera Type* and the *Visibility* of the dataset.
+* `cams.xml`: Contains the intrinsics information of the camera in the *Agisoft Metashape* format.
+
+Please note that these two files are only needed if the `compute_metrics` option is enabled. If not, they are completely optional and will not be used by the other components. For the format of the above two files, an example was provided in the `tests` directory
 
 **File Naming Convention:**
 

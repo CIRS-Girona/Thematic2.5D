@@ -2,6 +2,8 @@ invalid_code: -1
 uxo_start_code: 5
 max_uxo_code: 8
 
+thread_count: 1                       # Number of threads to use for parallel processing.
+
 directories:
   input_dir: tests/samples              # Directory containing the input tiled data (images, depths, masks).
   dataset_dir: tests/data/dataset       # Directory where the processed dataset patches will be saved.
@@ -12,7 +14,6 @@ directories:
 create_dataset:
   enabled: true                         # Set to `true` to enable dataset creation.
   bg_per_img: 75                        # Maximum number of background patches to extract per input image.
-  thread_count: 1                       # Number of threads to use for parallel processing.
   uxo_sample_rate: 0.0001               # Fraction of UXO pixels to sample as centers for potential UXO patches.
   uxo_threshold: 0.4                    # Minimum fraction of UXO pixels required within a window for it to be labeled as a UXO patch.
   invalid_threshold: 0.01               # Maximum fraction of invalid pixels (e.g., masked out areas) in a patch; patches exceeding this are skipped.
@@ -30,6 +31,9 @@ train_model:
   dimension: '25'                       # Specifies which data modality to use for training:
                                         # '2' for 2D (image), '3' for 3D (depth), '25' for 2.5D (both).
 
+compute_metrics:
+  enabled: false                         # Set to `true` to enable computation of classification metrics.
+
 run_inference:
   enabled: true                         # Set to `true` to enable inference.
   image_path: tests/samples/18mm/images # Path to the input image directory for inference.
@@ -39,7 +43,6 @@ run_inference:
   patch_size: 128                       # Size to which the extracted inference window is resized.), '25' for 2.5D (both).
   subdivide_axis: 3                     # Number of subdivisions along each axis around a superpixel centroid. Used for neighbor polling.
   threshold: 4                          # Minimum number of positive predictions within a superpixel region required to classify the region as UXO.
-  thread_count: 1                       # Number of threads to use for parallel processing.
 
 evaluate_results:
   enabled: true                        # Set to `true` to evaluate inference results using mean IoU.

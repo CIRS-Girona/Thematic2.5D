@@ -18,6 +18,95 @@ KERNELS: List[np.ndarray] = [
 ]
 
 
+def contrast_enhancement(image: np.ndarray, clip_limit: float = 2.0, tile_grid_size: Tuple[int, int] = (8, 8)) -> np.ndarray:
+    """
+    Applies Contrast Limited Adaptive Histogram Equalization (CLAHE) to enhance image contrast.
+
+    Enhances the value (V) channel of the input BGR image in HSV color space.
+
+    Args:
+        image (np.ndarray): The input BGR image (NumPy array).
+        clip_limit (float): Threshold for contrast limiting.
+        tile_grid_size (Tuple[int, int]): Size of the grid for histogram equalization.
+
+    Returns:
+        np.ndarray: The contrast-enhanced BGR image (NumPy array).
+    """
+    hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    clahe = cv2.createCLAHE(clipLimit=clip_limit, tileGridSize=tile_grid_size)
+    # The value channel is the intensity of the image (gray scale)
+    hsv_image[:, :, 2] = clahe.apply(hsv_image[:, :, 2])
+    enhanced_image = cv2.cvtColor(hsv_image, cv2.COLOR_HSV2BGR)
+
+    return enhanced_image
+
+
+def contrast_stretch(image: np.ndarray) -> np.ndarray:
+    """
+    Applies contrast stretching to the input image using percentile values.
+
+    Stretches the intensity range of each channel based on the 1.5th and 98.5th percentiles
+    to improve visibility.
+
+    Args:
+        image (np.ndarray): The input image (NumPy array). Expected to be BGR or grayscale.
+
+    Returns:
+        np.ndarray: The contrast-stretched image (NumPy array), with pixel values scaled to 0-255.
+    """
+    # Convert to float to avoid overflow during calculations
+    image_float = image.astype(np.float32)
+
+    # Apply contrast stretching formula
+    # Calculate min/max values based on percentiles for each channel
+    min_vals = np.percentile(image_float, 1.5, axis=(0, 1))
+    max_vals = np.percentile(image_float, 98.5, axis=(0, 1))
+
+    # If a channel has a uniform color (min == max), avoid division by 0
+    zero_range_indices = max_vals - min_vals == 0
+    max_vals[zero_range_indices] = min_vals[zero_range_indices] + 1 # Add a small epsilon
+
+    # Stretch image and clip values to [0, 255]
+    stretched_image = (image_float - min_vals) / (max_vals - min_vals)
+    return np.clip(255 * stretched_image, 0, 255).astype(np.uint8)
+
+
+def process_images(images: List[np.ndarray], enhance_contrast: bool = True, stretch_contrast: bool = True, clip_limit: float = 40.0, tile_grid_size: Tuple[int, int] = (8, 8)) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Applies a sequence of image processing steps (contrast enhancement and stretching)
+    to a list of images and returns the results in grayscale and HSV format.
+
+    Args:
+        images (List[np.ndarray]): A list of input BGR images (NumPy arrays).
+        enhance_contrast (bool): Whether to apply contrast enhancement (CLAHE).
+        stretch_contrast (bool): Whether to apply contrast stretching.
+        clip_limit (float): Clip limit for CLAHE if enhance_contrast is True.
+        tile_grid_size (Tuple[int, int]): Tile grid size for CLAHE if enhance_contrast is True.
+
+    Returns:
+        Tuple[np.ndarray, np.ndarray]: A tuple containing two NumPy arrays:
+            - A stacked array of grayscale images.
+            - A stacked array of HSV images.
+        Both arrays have shape (n_images, height, width) or (n_images, height, width, 3).
+    """
+    images_gray: List[np.ndarray] = []
+    images_hsv: List[np.ndarray] = []
+
+    for image in images:
+        processed_image = image.copy()
+
+        if enhance_contrast:
+            processed_image = contrast_enhancement(processed_image, clip_limit=clip_limit, tile_grid_size=tile_grid_size)
+
+        if stretch_contrast:
+            processed_image = contrast_stretch(processed_image)
+
+        images_gray.append(cv2.cvtColor(processed_image, cv2.COLOR_BGR2GRAY))
+        images_hsv.append(cv2.cvtColor(processed_image, cv2.COLOR_BGR2HSV))
+
+    return np.array(images_gray), np.array(images_hsv)
+
+
 def extract_color_features(image: np.ndarray, bins: int = 8, range: Tuple[int, int] = (0, 256)) -> np.ndarray:
     """
     Extracts color histogram features from an image.
@@ -254,7 +343,7 @@ def extract_curvatures_and_surface_normals(depth_patch: np.ndarray, eps: float =
     ]
 
 
-def extract_features(images_gray: List[np.ndarray], images_hsv: List[np.ndarray], depth: List[np.ndarray]) -> Tuple[np.ndarray, np.ndarray]:
+def extract_features(images: List[np.ndarray], depths: List[np.ndarray]) -> Tuple[np.ndarray, np.ndarray]:
     """
     Extracts 2D and 3D features from lists of grayscale, HSV, and optional depth patches.
 
@@ -276,6 +365,8 @@ def extract_features(images_gray: List[np.ndarray], images_hsv: List[np.ndarray]
         f(),
         print(f"Finished processing {name}: {round(time.perf_counter() - t, 2)} seconds")
     )
+
+    images_gray, images_hsv = process_images(images)
 
     features: dict[str, List[np.ndarray]] = {}
 
@@ -323,12 +414,12 @@ def extract_features(images_gray: List[np.ndarray], images_hsv: List[np.ndarray]
         )
     ))
 
-    if depth is not None:
+    if depths is not None:
         ts.append(Thread(target=logger,
             args=(
                 "Principal Plane Features",
                 time.perf_counter(),
-                lambda: features.update({'principal plane': [extract_principal_plane_features(d) for d in depth]})
+                lambda: features.update({'principal plane': [extract_principal_plane_features(d) for d in depths]})
             )
         ))
 
@@ -336,7 +427,7 @@ def extract_features(images_gray: List[np.ndarray], images_hsv: List[np.ndarray]
             args=(
                 "Curvature and Surface Normal Features",
                 time.perf_counter(),
-                lambda: features.update({'curvatures': [extract_curvatures_and_surface_normals(d) for d in depth]})
+                lambda: features.update({'curvatures': [extract_curvatures_and_surface_normals(d) for d in depths]})
             )
         ))
 
@@ -344,7 +435,7 @@ def extract_features(images_gray: List[np.ndarray], images_hsv: List[np.ndarray]
             args=(
                 "Symmetry Features",
                 time.perf_counter(),
-                lambda: features.update({'symmetry': [extract_gabor_features(d) for d in depth]})
+                lambda: features.update({'symmetry': [extract_gabor_features(d) for d in depths]})
             )
         ))
 

@@ -18,12 +18,25 @@ if __name__ == "__main__":
     models_dir = config['directories']['models_dir']
     features_dir = config['directories']['features_dir']
 
+    thread_count = config['thread_count']
+
     if not os.path.exists(input_dir) or not os.path.isdir(input_dir):
         print("The images folder doesn't exist. Please create the images folder as explained in the README file.")
         exit()
 
     # Create directories if they don't exist
-    for dir_path in [dataset_dir, results_dir, models_dir, features_dir, f"{dataset_dir}/2D/", f"{dataset_dir}/2D/background", f"{dataset_dir}/3D/", f"{dataset_dir}/3D/background"]:
+    dir_paths = [
+        dataset_dir,
+        results_dir,
+        models_dir,
+        features_dir,
+        f"{dataset_dir}/2D/",
+        f"{dataset_dir}/2D/background",
+        f"{dataset_dir}/3D/",
+        f"{dataset_dir}/3D/background"
+    ]
+
+    for dir_path in dir_paths:
         if not os.path.exists(dir_path) or not os.path.isdir(dir_path):
             os.makedirs(dir_path)
 
@@ -44,7 +57,7 @@ if __name__ == "__main__":
                 invalid_code=config['invalid_code'],
                 prefix=dtset,
                 bg_per_img=config['create_dataset']['bg_per_img'],
-                thread_count=config['create_dataset']['thread_count'],
+                thread_count=thread_count,
                 uxo_sample_rate=config['create_dataset']['uxo_sample_rate'],
                 uxo_threshold=config['create_dataset']['uxo_threshold'],
                 invalid_threshold=config['create_dataset']['invalid_threshold'],
@@ -98,7 +111,7 @@ if __name__ == "__main__":
                 config['run_inference']['threshold'],
             ))
 
-        with ThreadPoolExecutor(max_workers=config['run_inference']['thread_count']) as exe:
+        with ThreadPoolExecutor(max_workers=thread_count) as exe:
             list(tqdm(
                 exe.map(lambda a: run_inference(*a), args),
                 total=len(args)

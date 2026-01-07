@@ -59,17 +59,16 @@ def data_check(data_path: str, check_dir: bool = False, check_empty: bool = Fals
 
 
 if __name__ == "__main__":
-    # --- Start of Pipeline Test Execution ---
-
-    # 1. Initial Run: Create Dataset, Extract Features, and Train a Base Model (25D)
-
     with open("config.yaml", 'r') as f:
+        original_config = f.read()
+        f.seek(0)
         config = yaml.safe_load(f)
 
     # Enable steps for dataset creation and model training
     config['create_dataset']['enabled'] = True
     config['train_model']['enabled'] = True
-    # Disable inference and evaluation for this initial run
+    # Disable metric computation, inference, and evaluation for this initial run
+    config['compute_metrics']['enabled'] = False
     config['run_inference']['enabled'] = False
     config['evaluate_results']['enabled'] = False
 
@@ -87,8 +86,6 @@ if __name__ == "__main__":
     data_check(FEATURES_DIR, check_dir=True, check_empty=True)  # Check for saved features
     data_check(MODELS_DIR, check_dir=True, check_empty=True)    # Check for saved model
     data_check(RESULTS_DIR, check_dir=True)                     # Results dir might be empty/have logs
-
-    # 2. Train Different SVM Models using the Pre-Calculated Features from the previous run
 
     # Disable dataset creation
     config['create_dataset']['enabled'] = False
@@ -112,11 +109,10 @@ if __name__ == "__main__":
             data_check(f"{RESULTS_DIR}/{file_name}.jpg")
             data_check(f"{RESULTS_DIR}/{file_name}.txt")
 
-    # 3. Run Inference and Evaluation on Different Samples
-
     # Disable model training
     config['train_model']['enabled'] = False
     # Enable inference and evaluation for the loop
+    config['compute_metrics']['enabled'] = True
     config['run_inference']['enabled'] = True
     config['evaluate_results']['enabled'] = True
 
@@ -131,8 +127,6 @@ if __name__ == "__main__":
 
         run_pipeline(config)
 
-    # 4. Final Integrity Check for Evaluation Results
-
     # Verify that performance metrics and per-sample results were generated
     for model in MODELS:
         for binary in (True, False):
@@ -142,5 +136,9 @@ if __name__ == "__main__":
             data_check(f"{RESULTS_DIR}/{file_name}-mIoU.txt")
             # Check for the directory containing results/visualizations for each sample
             data_check(f"{RESULTS_DIR}/{file_name}", check_dir=True, check_empty=True)
+
+    # Restore the original configuration file
+    with open("config.yaml", 'w') as f:
+        f.write(original_config)
 
     print("--- All pipeline tests and data checks completed successfully. ---")

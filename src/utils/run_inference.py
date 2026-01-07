@@ -1,6 +1,7 @@
 import numpy as np
 import cv2
 import os
+from time import perf_counter
 
 from .feature_extraction import extract_features
 from .image_processing import process_images, superpixel_segmentation, apply_mask
@@ -47,13 +48,18 @@ def run_inference(
 
     img_label = '.'.join(image_path.split('/')[-1].split('.')[:-1])
 
-    labels, centroids = superpixel_segmentation(img, ruler=1, region_size=region_size)
+    # TODO: Adjust num_components and compactness as needed using config parameters
+    s = perf_counter()
+    labels, centroids = superpixel_segmentation(img)
+    print(f"Superpixel segmentation completed in {perf_counter() - s:.2f} seconds.")
 
     # Loop over each centroid
+    s = perf_counter()
+
     imgs = []
     depths = []
     patches = []
-    for c_y, c_x in centroids:
+    for c_x, c_y in centroids:
         window_radius = window_size // 2
 
         # Calculate patch boundaries
@@ -86,9 +92,13 @@ def run_inference(
                 patches.append(labels[c_x, c_y])
 
     patches = np.array(patches)
-    gray_images, hsv_images = process_images(imgs)
-    features_2d, features_3d = extract_features(gray_images, hsv_images, depths)
+    print(f"Patch extraction completed in {perf_counter() - s:.2f} seconds.")
 
+    s = perf_counter()
+    features_2d, features_3d = extract_features(imgs, depths)
+    print(f"Feature extraction completed in {perf_counter() - s:.2f} seconds.")
+
+    s = perf_counter()
     models = os.listdir(models_dir)
     for model_name in models:
         model = SVMModel(model_dir=models_dir)
@@ -130,3 +140,4 @@ def run_inference(
             inference = apply_mask(img, uxo_mask, mode='highlight')
 
         cv2.imwrite(f"{inference_dir}/{img_label}.jpg", inference)
+    print(f"Inference with model {model_name} completed in {perf_counter() - s:.2f} seconds.")

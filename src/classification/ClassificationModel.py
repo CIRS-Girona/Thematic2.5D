@@ -94,6 +94,18 @@ class ClassificationModel:
         self.model = Pipeline(pipeline, verbose=True)
 
 
+    def is_binary(self) -> bool:
+        """
+        Checks if the classification model is a binary classifier.
+
+        Returns:
+            bool: True if the model is binary, False otherwise.
+        """
+        if hasattr(self.model.steps[-1][1], 'classes_'):
+            return len(self.model.steps[-1][1].classes_) == 2
+        return False
+
+
     def train(self, X_train: np.ndarray, y_train: np.ndarray) -> np.ndarray:
         """
         Trains the entire pipeline, including preprocessing steps and the classification model.
@@ -129,11 +141,7 @@ class ClassificationModel:
         The filename is generated based on the model name, label,
         and whether it's a binary classification model.
         """
-        is_binary = False
-        if hasattr(self.model.steps[-1][1], 'classes_'):
-            is_binary = len(self.model.steps[-1][1].classes_) == 2
-
-        binary_suffix = '_binary' if is_binary else ''
+        binary_suffix = '_binary' if self.is_binary() else ''
         filename = f"{self.name}{self.label}{binary_suffix}.pkl"
 
         model_path = os.path.join(self.dir, filename)

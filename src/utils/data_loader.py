@@ -91,7 +91,7 @@ def save_features(images_dir: str, depth_dir: str, features_dir: str, subset: in
     print("Loading data...")
 
     t_start = time.perf_counter()
-    images, depth, labels = load_data(images_dir, depth_dir, subset)
+    images, depths, labels = load_data(images_dir, depth_dir, subset)
 
     with open(f"{features_dir}/labels.msgpack", 'wb') as f:
         f.write(msgpack.packb(labels))
@@ -101,20 +101,11 @@ def save_features(images_dir: str, depth_dir: str, features_dir: str, subset: in
 
     print(f"Loaded data and saved labels: {get_time(t_start)}s")
 
-    print("Processing images...")
+    print("Extracting features...")
     t_start = time.perf_counter()
-    gray_images, hsv_images = process_images(images)
+    features_2d, features_3d = extract_features(images, depths)
 
-    del images
-    gc.collect()
-
-    print(f"Processed images: {get_time(t_start)}s")
-
-    print("Extracted features...")
-    t_start = time.perf_counter()
-    features_2d, features_3d = extract_features(gray_images, hsv_images, depth)
-
-    del depth, gray_images, hsv_images
+    del depths, images
     gc.collect()
 
     print(f"Extracted features: {get_time(t_start)}s")
