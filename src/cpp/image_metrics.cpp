@@ -31,6 +31,61 @@ double calculate_mean(const std::vector<double>& v) {
 
 // We must wrap our C++ functions in extern "C" for ctypes to find them
 extern "C" {
+    /**
+     * @brief Calculates the ground resolution (mm/px).
+     * * @param u, v, z Arrays of pixel coordinates and corresponding depth.
+     * @param n Number of points in the arrays.
+     * @param fx, fy Focal lengths.
+     * @param cx, cy Principal point offsets.
+     */
+    double calculate_ground_resolution_c(
+        double* u, double* v, double* z, int n,
+        double fx, double fy, double cx, double cy) 
+    {
+        if (n == 0) return 0.0;
+
+        std::vector<double> x(n);
+        std::vector<double> y(n);
+
+        int min_x_idx = 0, max_x_idx = 0;
+        int min_y_idx = 0, max_y_idx = 0;
+
+        // Project to 3D and find argmin/argmax
+        for (int i = 0; i < n; ++i) {
+            x[i] = z[i] * (u[i] - cx) / fx;
+            y[i] = z[i] * (v[i] - cy) / fy;
+
+            if (x[i] < x[min_x_idx]) min_x_idx = i;
+            if (x[i] > x[max_x_idx]) max_x_idx = i;
+            if (y[i] < y[min_y_idx]) min_y_idx = i;
+            if (y[i] > y[max_y_idx]) max_y_idx = i;
+        }
+
+        // Calculate pixel resolutions (u_res, v_res)
+        // L2 Norm: sqrt((u2-u1)^2 + (v2-v1)^2)
+        double du_x = u[max_x_idx] - u[min_x_idx];
+        double dv_x = v[max_x_idx] - v[min_x_idx];
+        double u_res = std::sqrt(du_x * du_x + dv_x * dv_x);
+
+        double du_y = u[max_y_idx] - u[min_y_idx];
+        double dv_y = v[max_y_idx] - v[min_y_idx];
+        double v_res = std::sqrt(du_y * du_y + dv_y * dv_y);
+
+        // Calculate spatial resolutions (x_res, y_res)
+        double dx_x = x[max_x_idx] - x[min_x_idx];
+        double dy_x = y[max_x_idx] - y[min_x_idx];
+        double x_res = std::sqrt(dx_x * dx_x + dy_x * dy_x);
+
+        double dx_y = x[max_y_idx] - x[min_y_idx];
+        double dy_y = y[max_y_idx] - y[min_y_idx];
+        double y_res = std::sqrt(dx_y * dx_y + dy_y * dy_y);
+
+        // Guard against division by zero
+        if (u_res == 0 || v_res == 0) return 0.0;
+
+        // Final Calculation (mm / px)
+        return (x_res / u_res + y_res / v_res) / 2.0;
+    }
 
     /**
      * @brief Calculates the slant angle using Eigen for least squares fitting.
