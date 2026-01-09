@@ -3,7 +3,6 @@
 #include <cmath>
 #include <numeric>
 #include <algorithm>
-#include <opencv2/opencv.hpp>
 #include <eigen3/Eigen/Dense>
 
 #ifndef M_PI
@@ -12,63 +11,50 @@
 
 // --- Helper Functions (Internal) ---
 
-// Helper for mean
-double calculate_mean(const std::vector<double>& v) {
-    if (v.empty()) return 0.0;
-    double sum = std::accumulate(v.begin(), v.end(), 0.0);
-    return sum / v.size();
-}
-
-// Helper for standard deviation
-double calculate_std(const std::vector<double>& v, double mean) {
-    if (v.empty()) return 0.0;
-    double sq_sum = 0.0;
-    for (double d : v) {
-        sq_sum += (d - mean) * (d - mean);
-    }
-    return std::sqrt(sq_sum / v.size());
-}
-
 // Struct to hold skewness and kurtosis
 struct SkewKurt {
     double skew;
     double kurtosis;
 };
 
-// Calculates Skewness and Kurtosis for a dataset
-SkewKurt calculate_skew_kurtosis(const cv::Mat& data) {
-    if (data.empty()) return {0.0, 0.0};
+// Calculates Mean and Standard Deviation
+std::pair<double, double> calculate_mean_std(const double* data, size_t size) {
+    if (size == 0) return {0.0, 0.0};
     
-    cv::Mat mean_mat, std_mat;
-    cv::meanStdDev(data, mean_mat, std_mat);
-    double mean = mean_mat.at<double>(0);
-    double std_dev = std_mat.at<double>(0);
+    double sum = 0.0;
+    for (size_t i = 0; i < size; ++i) {
+        sum += data[i];
+    }
+    double mean = sum / size;
 
-    if (std_dev < 1e-9) return {0.0, 0.0};
+    double sq_sum = 0.0;
+    for (size_t i = 0; i < size; ++i) {
+        double diff = data[i] - mean;
+        sq_sum += diff * diff;
+    }
+    double std_dev = std::sqrt(sq_sum / size);
 
-    double n = (double)data.total();
+    return {mean, std_dev};
+}
+
+// Overload for vector
+std::pair<double, double> calculate_mean_std(const std::vector<double>& data) {
+    return calculate_mean_std(data.data(), data.size());
+}
+
+// Calculates Skewness and Kurtosis
+SkewKurt calculate_skew_kurtosis(const double* data, size_t size, double mean, double std_dev) {
+    if (size == 0 || std_dev < 1e-9) return {0.0, 0.0};
+
+    double n = (double)size;
     double sum_cubed = 0.0;
     double sum_quad = 0.0;
 
-    // Iterate efficiently
-    if (data.isContinuous()) {
-        const double* ptr = data.ptr<double>(0); 
-        for (size_t i = 0; i < data.total(); ++i) {
-            double diff = (ptr[i] - mean) / std_dev;
-            double diff_sq = diff * diff;
-            sum_cubed += diff_sq * diff;
-            sum_quad += diff_sq * diff_sq;
-        }
-    } else {
-        for (int i = 0; i < data.rows; ++i) {
-            for (int j = 0; j < data.cols; ++j) {
-                double val = data.at<double>(i, j);
-                double diff = (val - mean) / std_dev;
-                double diff_sq = diff * diff;
-                sum_cubed += diff_sq * diff;
-                sum_quad += diff_sq * diff_sq;
-            }
-        }
+    for (size_t i = 0; i < size; ++i) {
+        double diff = (data[i] - mean) / std_dev;
+        double diff_sq = diff * diff;
+        sum_cubed += diff_sq * diff;
+        sum_quad += diff_sq * diff_sq;
     }
 
     double skew = sum_cubed / n;
@@ -77,61 +63,15 @@ SkewKurt calculate_skew_kurtosis(const cv::Mat& data) {
     return {skew, kurtosis};
 }
 
-// Global cache for Gabor kernels to avoid re-creation overhead
-static std::vector<cv::Mat> GABOR_KERNELS_REAL;
-static std::vector<cv::Mat> GABOR_KERNELS_IMAG;
-static bool GABOR_INIT = false;
-
-void init_gabor_kernels() {
-    if (GABOR_INIT) return;
-
-    double sigmas[] = {1.0, 3.0};
-    double freqs[] = {0.05, 0.25};
-    
-    // Order loops to match Python: theta, sigma, frequency
-    for (int t = 0; t < 4; ++t) {
-        double theta = CV_PI * t / 4.0;
-        for (double sigma : sigmas) {
-            for (double freq : freqs) {
-                double lambd = 1.0 / freq;
-                // Real part (psi=0)
-                cv::Mat k_real = cv::getGaborKernel(cv::Size(5,5), sigma, theta, lambd, 1.0, 0, CV_64F);
-                // Imaginary part (psi=pi/2)
-                cv::Mat k_imag = cv::getGaborKernel(cv::Size(5,5), sigma, theta, lambd, 1.0, CV_PI/2, CV_64F);
-                
-                GABOR_KERNELS_REAL.push_back(k_real);
-                GABOR_KERNELS_IMAG.push_back(k_imag);
-            }
-        }
-    }
-    GABOR_INIT = true;
+// Helper to access pixels with Border Replicate (Clamp)
+inline int clamp_idx(int idx, int max_size) {
+    if (idx < 0) return 0;
+    if (idx >= max_size) return max_size - 1;
+    return idx;
 }
 
+
 extern "C" {
-
-    /**
-     * @brief Applies CLAHE contrast enhancement.
-     */
-    void contrast_enhancement_c(
-        unsigned char* src_data, int rows, int cols, 
-        double clip_limit, int grid_x, int grid_y, 
-        unsigned char* dst_data) 
-    {
-        cv::Mat src(rows, cols, CV_8UC3, src_data);
-        cv::Mat dst(rows, cols, CV_8UC3, dst_data);
-
-        cv::Mat hsv;
-        cv::cvtColor(src, hsv, cv::COLOR_BGR2HSV);
-
-        std::vector<cv::Mat> channels;
-        cv::split(hsv, channels);
-
-        auto clahe = cv::createCLAHE(clip_limit, cv::Size(grid_x, grid_y));
-        clahe->apply(channels[2], channels[2]);
-
-        cv::merge(channels, hsv);
-        cv::cvtColor(hsv, dst, cv::COLOR_HSV2BGR);
-    }
 
     /**
      * @brief Applies contrast stretching based on percentiles.
@@ -140,50 +80,40 @@ extern "C" {
         unsigned char* src_data, int rows, int cols, int channels,
         unsigned char* dst_data)
     {
-        int type = (channels == 3) ? CV_8UC3 : CV_8UC1;
-        cv::Mat src(rows, cols, type, src_data);
-        cv::Mat dst(rows, cols, type, dst_data);
-        
-        cv::Mat src_f;
-        src.convertTo(src_f, CV_32F);
+        int num_pixels = rows * cols;
+        std::vector<unsigned char> channel_buffer(num_pixels);
 
-        std::vector<cv::Mat> split_channels;
-        cv::split(src_f, split_channels);
-        std::vector<cv::Mat> dst_channels;
-
-        // Process each channel independently
-        for (auto& ch : split_channels) {
-            // Find percentiles using sorting (std::nth_element for efficiency)
-            cv::Mat flat = ch.reshape(1, 1).clone();
-            std::vector<float> data(flat.begin<float>(), flat.end<float>());
-            
-            size_t n = data.size();
-            size_t idx_low = (size_t)(0.015 * n);
-            size_t idx_high = (size_t)(0.985 * n);
-
-            std::nth_element(data.begin(), data.begin() + idx_low, data.end());
-            float min_val = data[idx_low];
-
-            std::nth_element(data.begin(), data.begin() + idx_high, data.end());
-            float max_val = data[idx_high];
-
-            if (std::abs(max_val - min_val) < 1e-6) {
-                max_val = min_val + 1.0f;
+        for (int ch = 0; ch < channels; ++ch) {
+            for (int i = 0; i < num_pixels; ++i) {
+                channel_buffer[i] = src_data[i * channels + ch];
             }
 
-            // Stretch: (img - min) / (max - min) * 255
-            cv::Mat stretched = (ch - min_val) / (max_val - min_val) * 255.0f;
-            
-            // Clip
-            cv::threshold(stretched, stretched, 255, 255, cv::THRESH_TRUNC);
-            cv::threshold(stretched, stretched, 0, 0, cv::THRESH_TOZERO);
-            
-            dst_channels.push_back(stretched);
-        }
+            size_t idx_low = (size_t)(0.015 * num_pixels);
+            size_t idx_high = (size_t)(0.985 * num_pixels);
 
-        cv::Mat merged;
-        cv::merge(dst_channels, merged);
-        merged.convertTo(dst, CV_8U);
+            std::nth_element(channel_buffer.begin(), channel_buffer.begin() + idx_low, channel_buffer.end());
+            unsigned char min_val = channel_buffer[idx_low];
+
+            std::nth_element(channel_buffer.begin(), channel_buffer.begin() + idx_high, channel_buffer.end());
+            unsigned char max_val = channel_buffer[idx_high];
+
+            float min_f = (float)min_val;
+            float max_f = (float)max_val;
+
+            if (std::abs(max_f - min_f) < 1e-6) {
+                max_f = min_f + 1.0f;
+            }
+
+            float scale = 255.0f / (max_f - min_f);
+
+            for (int i = 0; i < num_pixels; ++i) {
+                unsigned char val = src_data[i * channels + ch];
+                float stretched = (val - min_f) * scale;
+                if (stretched < 0.0f) stretched = 0.0f;
+                if (stretched > 255.0f) stretched = 255.0f;
+                dst_data[i * channels + ch] = (unsigned char)stretched;
+            }
+        }
     }
 
     /**
@@ -194,22 +124,25 @@ extern "C" {
         int bins, int range_min, int range_max,
         double* out_features)
     {
-        cv::Mat img(rows, cols, CV_8UC1, img_data);
-        
-        int histSize[] = {bins};
-        float hranges[] = { (float)range_min, (float)range_max };
-        const float* ranges[] = { hranges };
-        int channels[] = {0};
+        for (int i = 0; i < bins; ++i) out_features[i] = 0.0;
 
-        cv::Mat hist;
-        cv::calcHist(&img, 1, channels, cv::Mat(), hist, 1, histSize, ranges, true, false);
+        int num_pixels = rows * cols;
+        float range_width = (float)(range_max - range_min);
+        if (range_width <= 0) range_width = 1.0f;
 
-        // Normalize density=True
-        double sum = cv::sum(hist)[0];
-        if (sum > 0) hist /= sum;
+        for (int i = 0; i < num_pixels; ++i) {
+            int val = img_data[i];
+            if (val >= range_min && val < range_max) {
+                int bin_idx = (int)((val - range_min) * bins / range_width);
+                if (bin_idx >= bins) bin_idx = bins - 1; 
+                out_features[bin_idx]++;
+            }
+        }
 
-        for (int i = 0; i < bins; ++i) {
-            out_features[i] = (double)hist.at<float>(i);
+        double sum = 0.0;
+        for (int i = 0; i < bins; ++i) sum += out_features[i];
+        if (sum > 0) {
+            for (int i = 0; i < bins; ++i) out_features[i] /= sum;
         }
     }
 
@@ -220,50 +153,34 @@ extern "C" {
         unsigned char* gray_data, int rows, int cols, int n_points,
         double* out_features)
     {
-        cv::Mat gray(rows, cols, CV_8UC1, gray_data);
-        cv::Mat lbp_img = cv::Mat::zeros(rows, cols, CV_32S);
+        int n_bins = n_points + 2;
+        for(int i=0; i<n_bins; ++i) out_features[i] = 0.0;
 
-        // Compute LBP codes
-        // Skipping 1-pixel border
         for (int i = 1; i < rows - 1; ++i) {
-            const unsigned char* prev = gray.ptr<unsigned char>(i - 1);
-            const unsigned char* curr = gray.ptr<unsigned char>(i);
-            const unsigned char* next = gray.ptr<unsigned char>(i + 1);
-            int* dst = lbp_img.ptr<int>(i);
-
             for (int j = 1; j < cols - 1; ++j) {
-                unsigned char center = curr[j];
+                unsigned char center = gray_data[i * cols + j];
                 int code = 0;
-                code |= (prev[j-1] >= center) << 7;
-                code |= (prev[j]   >= center) << 6;
-                code |= (prev[j+1] >= center) << 5;
-                code |= (curr[j+1] >= center) << 4;
-                code |= (next[j+1] >= center) << 3;
-                code |= (next[j]   >= center) << 2;
-                code |= (next[j-1] >= center) << 1;
-                code |= (curr[j-1] >= center) << 0;
-                dst[j] = code;
+                
+                code |= (gray_data[(i-1) * cols + (j-1)] >= center) << 7;
+                code |= (gray_data[(i-1) * cols + (j)]   >= center) << 6;
+                code |= (gray_data[(i-1) * cols + (j+1)] >= center) << 5;
+                code |= (gray_data[(i)   * cols + (j+1)] >= center) << 4;
+                code |= (gray_data[(i+1) * cols + (j+1)] >= center) << 3;
+                code |= (gray_data[(i+1) * cols + (j)]   >= center) << 2;
+                code |= (gray_data[(i+1) * cols + (j-1)] >= center) << 1;
+                code |= (gray_data[(i)   * cols + (j-1)] >= center) << 0;
+
+                float val = (float)code;
+                int bin_idx = (int)(val * n_bins / 256.0f);
+                if (bin_idx >= n_bins) bin_idx = n_bins - 1;
+                out_features[bin_idx]++;
             }
         }
 
-        // Compute Histogram of LBP codes
-        cv::Mat lbp_float;
-        lbp_img.convertTo(lbp_float, CV_32F);
-
-        int n_bins = n_points + 2; 
-        int histSize[] = {n_bins};
-        float range[] = { 0.0f, (float)n_bins };
-        const float* ranges[] = { range };
-        int channels[] = {0};
-
-        cv::Mat hist;
-        cv::calcHist(&lbp_float, 1, channels, cv::Mat(), hist, 1, histSize, ranges, true, false);
-
-        double sum = cv::sum(hist)[0];
-        if (sum > 0) hist /= sum;
-
-        for (int i = 0; i < n_bins; ++i) {
-            out_features[i] = (double)hist.at<float>(i);
+        double sum = 0.0;
+        for (int i = 0; i < n_bins; ++i) sum += out_features[i];
+        if (sum > 0) {
+            for (int i = 0; i < n_bins; ++i) out_features[i] /= sum;
         }
     }
 
@@ -274,19 +191,17 @@ extern "C" {
         unsigned char* img_data, int rows, int cols,
         double* out_features)
     {
-        cv::Mat img(rows, cols, CV_8UC1, img_data);
-        
-        // Angles: 0, 45, 90, 135
         int drs[] = {0, -1, -1, -1};
         int dcs[] = {1, 1, 0, -1};
-
         int feat_idx = 0;
+
+        std::vector<double> glcm(256 * 256);
 
         for (int k = 0; k < 4; ++k) {
             int dr = drs[k];
             int dc = dcs[k];
 
-            double glcm[256][256] = {0};
+            std::fill(glcm.begin(), glcm.end(), 0.0);
             double total_sum = 0.0;
 
             int r_start = std::max(0, -dr);
@@ -295,24 +210,24 @@ extern "C" {
             int c_end = std::min(cols, cols - dc);
 
             for (int r = r_start; r < r_end; ++r) {
-                const unsigned char* ptr_src = img.ptr<unsigned char>(r);
-                const unsigned char* ptr_dst = img.ptr<unsigned char>(r + dr);
                 for (int c = c_start; c < c_end; ++c) {
-                    glcm[ptr_src[c]][ptr_dst[c + dc]]++;
+                    unsigned char src_val = img_data[r * cols + c];
+                    unsigned char dst_val = img_data[(r + dr) * cols + (c + dc)];
+                    glcm[src_val * 256 + dst_val]++;
                     total_sum++;
                 }
             }
 
-            // Symmetric Normalization Factor (sum(M + M.T) = 2 * sum(M))
             double norm = (total_sum > 0) ? 1.0 / (2.0 * total_sum) : 0.0;
-
             double contrast = 0, dissimilarity = 0, homogeneity = 0, asm_val = 0;
             double mean_i = 0, mean_j = 0;
 
-            // Pass 1: Basic stats + Means
             for(int i=0; i<256; ++i) {
                 for(int j=0; j<256; ++j) {
-                    double p = (glcm[i][j] + glcm[j][i]) * norm;
+                    double val_ij = glcm[i * 256 + j];
+                    double val_ji = glcm[j * 256 + i];
+                    double p = (val_ij + val_ji) * norm;
+
                     if (p > 0) {
                         double diff = (double)(i - j);
                         contrast += p * diff * diff;
@@ -326,12 +241,13 @@ extern "C" {
             }
 
             double energy = std::sqrt(asm_val);
-            
-            // Pass 2: Correlation (needs means)
             double var_i = 0, var_j = 0, cov = 0;
             for(int i=0; i<256; ++i) {
                 for(int j=0; j<256; ++j) {
-                    double p = (glcm[i][j] + glcm[j][i]) * norm;
+                    double val_ij = glcm[i * 256 + j];
+                    double val_ji = glcm[j * 256 + i];
+                    double p = (val_ij + val_ji) * norm;
+
                     if (p > 0) {
                         var_i += p * (i - mean_i) * (i - mean_i);
                         var_j += p * (j - mean_j) * (j - mean_j);
@@ -354,57 +270,75 @@ extern "C" {
     }
 
     /**
-     * @brief Calculates Gabor filter features.
+     * @brief Calculates Histogram of Oriented Gradients (HOG) features.
+     * Computes a global orientation histogram (weighted by magnitude)
+     * and statistical moments of the gradient magnitude.
+     * Returns: [bin_0, ..., bin_N, mean_mag, std_mag, skew_mag, kurt_mag]
      */
-    void extract_gabor_features_c(
-        unsigned char* img_data, int rows, int cols,
+    void extract_hog_features_c(
+        unsigned char* img_data, int rows, int cols, int n_bins,
         double* out_features)
     {
-        if (!GABOR_INIT) init_gabor_kernels();
+        // 1. Clear output buffer
+        // Total features = n_bins + 4 (Mean, Std, Skew, Kurt)
+        int stats_offset = n_bins;
+        int total_len = n_bins + 4;
+        for(int i = 0; i < total_len; ++i) out_features[i] = 0.0;
 
-        cv::Mat img(rows, cols, CV_8UC1, img_data);
-        cv::Mat img_f;
-        img.convertTo(img_f, CV_64F); 
+        std::vector<double> mags;
+        mags.reserve(rows * cols);
 
-        int feat_idx = 0;
-        size_t n_kernels = GABOR_KERNELS_REAL.size();
+        double bin_width = 180.0 / n_bins;
+        double total_mag_sum = 0.0;
 
-        for (size_t i = 0; i < n_kernels; ++i) {
-            cv::Mat r_real, r_imag;
-            cv::filter2D(img_f, r_real, -1, GABOR_KERNELS_REAL[i]);
-            cv::filter2D(img_f, r_imag, -1, GABOR_KERNELS_IMAG[i]);
+        // 2. Compute Gradients and Accumulate Histogram
+        for(int r = 0; r < rows; ++r) {
+            for(int c = 0; c < cols; ++c) {
+                // Calculate indices with clamping (Replicate Border)
+                int c_left  = clamp_idx(c - 1, cols);
+                int c_right = clamp_idx(c + 1, cols);
+                int r_up    = clamp_idx(r - 1, rows);
+                int r_down  = clamp_idx(r + 1, rows);
 
-            cv::Mat r_sq = r_real.mul(r_real) + r_imag.mul(r_imag);
-            
-            // 1. Local Energy
-            double local_energy = cv::sum(r_sq)[0];
+                // Central Difference
+                double dx = (double)img_data[r * cols + c_right] - (double)img_data[r * cols + c_left];
+                double dy = (double)img_data[r_down * cols + c]  - (double)img_data[r_up * cols + c];
 
-            // 2. Mean Amplitude
-            cv::Mat amp;
-            cv::sqrt(r_sq, amp);
-            double mean_amplitude = cv::mean(amp)[0];
+                double mag = std::sqrt(dx * dx + dy * dy);
+                double ang = std::atan2(dy, dx) * 180.0 / M_PI; // Result in [-180, 180]
 
-            // 3. Phase Stats
-            cv::Mat phase;
-            cv::phase(r_real, r_imag, phase); // returns radians
-            
-            // Reshape for stats
-            cv::Mat phase_flat = phase.reshape(1, phase.total());
-            cv::Mat phase_64; 
-            phase_flat.convertTo(phase_64, CV_64F);
+                // Convert to Unsigned Orientation [0, 180)
+                if (ang < 0) ang += 180.0;
+                if (ang >= 180.0) ang -= 180.0;
 
-            cv::Scalar mean_std = cv::mean(phase_64);
-            cv::Mat m, s;
-            cv::meanStdDev(phase_64, m, s);
-            SkewKurt sk = calculate_skew_kurtosis(phase_64);
+                // Determine Bin (0 to n_bins-1)
+                int bin = (int)(ang / bin_width);
+                if (bin >= n_bins) bin = n_bins - 1;
 
-            out_features[feat_idx++] = local_energy;
-            out_features[feat_idx++] = mean_amplitude;
-            out_features[feat_idx++] = m.at<double>(0);     // Mean
-            out_features[feat_idx++] = s.at<double>(0);     // Std
-            out_features[feat_idx++] = sk.skew;
-            out_features[feat_idx++] = sk.kurtosis;
+                // Weighted Voting
+                out_features[bin] += mag;
+                
+                // Store magnitude for stats
+                mags.push_back(mag);
+                total_mag_sum += mag;
+            }
         }
+
+        // 3. Normalize Histogram (L1 Norm)
+        if (total_mag_sum > 1e-9) {
+            for(int i = 0; i < n_bins; ++i) {
+                out_features[i] /= total_mag_sum;
+            }
+        }
+
+        // 4. Calculate Magnitude Statistics
+        std::pair<double, double> ms = calculate_mean_std(mags);
+        SkewKurt sk = calculate_skew_kurtosis(mags.data(), mags.size(), ms.first, ms.second);
+
+        out_features[stats_offset + 0] = ms.first;     // Mean
+        out_features[stats_offset + 1] = ms.second;    // Std Dev
+        out_features[stats_offset + 2] = sk.skew;      // Skewness
+        out_features[stats_offset + 3] = sk.kurtosis;  // Kurtosis
     }
 
     /**
@@ -414,12 +348,10 @@ extern "C" {
         double* depth_data, int rows, int cols, double eps,
         double* out_features)
     {
-        // Copy depth to vector for processing
         int n_pixels = rows * cols;
         Eigen::VectorXd z(n_pixels);
         Eigen::MatrixXd A(n_pixels, 9);
-        
-        // Also compute rugosity
+
         double As = 0.0;
         double Ap = (double)((cols - 1) * (rows - 1));
 
@@ -432,18 +364,10 @@ extern "C" {
                 double x = (double)c;
                 double y = (double)r;
 
-                // Design matrix for polynomial
-                A(idx, 0) = 1.0;
-                A(idx, 1) = x;
-                A(idx, 2) = y;
-                A(idx, 3) = x*x;
-                A(idx, 4) = x*y;
-                A(idx, 5) = y*y;
-                A(idx, 6) = x*x*y;
-                A(idx, 7) = x*y*y;
-                A(idx, 8) = y*y*y;
+                A(idx, 0) = 1.0; A(idx, 1) = x; A(idx, 2) = y;
+                A(idx, 3) = x*x; A(idx, 4) = x*y; A(idx, 5) = y*y;
+                A(idx, 6) = x*x*y; A(idx, 7) = x*y*y; A(idx, 8) = y*y*y;
 
-                // Rugosity Area Calculation
                 if (r < rows - 1 && c < cols - 1) {
                     double z1 = depth_data[r * cols + c];
                     double z2 = depth_data[(r + 1) * cols + c];
@@ -458,23 +382,15 @@ extern "C" {
             }
         }
 
-        // 1. Z Statistics
-        // Use OpenCV for easy stats on the buffer
-        cv::Mat z_mat(rows, cols, CV_64F, depth_data);
-        cv::Scalar z_mean, z_std;
-        cv::meanStdDev(z_mat, z_mean, z_std);
-        SkewKurt z_sk = calculate_skew_kurtosis(z_mat);
+        std::pair<double, double> z_ms = calculate_mean_std(depth_data, n_pixels);
+        SkewKurt z_sk = calculate_skew_kurtosis(depth_data, n_pixels, z_ms.first, z_ms.second);
 
-        // 2. Least Squares Solve
         Eigen::VectorXd coeffs = A.colPivHouseholderQr().solve(z);
-
-        // 3. Distance Statistics
         Eigen::VectorXd z_fitted = A * coeffs;
         Eigen::VectorXd diff = (z - z_fitted).cwiseAbs();
         double dist_mean = diff.mean();
         double dist_std = std::sqrt((diff.array() - dist_mean).square().sum() / (diff.size()));
 
-        // 4. Angle
         double n_x = coeffs(1);
         double n_y = coeffs(2);
         double n_z = -1.0; 
@@ -483,9 +399,8 @@ extern "C" {
 
         double rugosity = (Ap > 0) ? As / Ap : 0.0;
 
-        // Fill Output
         int out_idx = 0;
-        out_features[out_idx++] = z_std[0];
+        out_features[out_idx++] = z_ms.second; // std
         out_features[out_idx++] = z_sk.skew;
         out_features[out_idx++] = z_sk.kurtosis;
         for(int i=0; i<9; ++i) out_features[out_idx++] = coeffs(i);
@@ -502,86 +417,86 @@ extern "C" {
         double* depth_data, int rows, int cols, double eps,
         double* out_features)
     {
-        cv::Mat z(rows, cols, CV_64F, depth_data);
+        std::vector<double> dx(rows * cols);
+        std::vector<double> dy(rows * cols);
+        std::vector<double> dxdx(rows * cols);
+        std::vector<double> dydy(rows * cols);
+        std::vector<double> dxdy(rows * cols);
+        std::vector<double> dydx(rows * cols);
 
-        // Calculate Derivatives using central difference (replicate border)
-        // Kernel: [-0.5, 0, 0.5]
-        cv::Mat kx = (cv::Mat_<double>(1,3) << -0.5, 0, 0.5);
-        cv::Mat ky = (cv::Mat_<double>(3,1) << -0.5, 0, 0.5);
-
-        cv::Mat dx, dy, dxdx, dydy, dxdy, dydx;
-        cv::filter2D(z, dx, -1, kx, cv::Point(-1,-1), 0, cv::BORDER_REPLICATE);
-        cv::filter2D(z, dy, -1, ky, cv::Point(-1,-1), 0, cv::BORDER_REPLICATE);
-        cv::filter2D(dx, dxdx, -1, kx, cv::Point(-1,-1), 0, cv::BORDER_REPLICATE);
-        cv::filter2D(dy, dydy, -1, ky, cv::Point(-1,-1), 0, cv::BORDER_REPLICATE);
-        cv::filter2D(dx, dxdy, -1, ky, cv::Point(-1,-1), 0, cv::BORDER_REPLICATE);
-        cv::filter2D(dy, dydx, -1, kx, cv::Point(-1,-1), 0, cv::BORDER_REPLICATE);
-
-        // Feature Accumulators
-        std::vector<double> G_vec, M_vec, k1_vec, k2_vec, S_vec, C_vec, alpha_vec, beta_vec;
-        int n_pixels = rows * cols;
-        G_vec.reserve(n_pixels); M_vec.reserve(n_pixels); 
-        k1_vec.reserve(n_pixels); k2_vec.reserve(n_pixels);
-        S_vec.reserve(n_pixels); C_vec.reserve(n_pixels);
-        alpha_vec.reserve(n_pixels); beta_vec.reserve(n_pixels);
-
-        for (int i = 0; i < rows; ++i) {
-            for (int j = 0; j < cols; ++j) {
-                double _dx = dx.at<double>(i, j);
-                double _dy = dy.at<double>(i, j);
-                double _dxdx = dxdx.at<double>(i, j);
-                double _dydy = dydy.at<double>(i, j);
-                double _dxdy = dxdy.at<double>(i, j);
-                double _dydx = dydx.at<double>(i, j);
-
-                double denom = 1.0 + _dx*_dx + _dy*_dy;
-                double G = (_dxdx * _dydy - _dxdy * _dydx) / (denom * denom);
-                double M = (_dydy + _dxdx) / (2.0 * std::pow(denom, 1.5));
-
-                double discriminant = std::sqrt(std::max(M*M - G, 0.0));
-                double k1 = M + discriminant;
-                double k2 = M - discriminant;
-
-                double S = (2.0 / M_PI) * std::atan2(k2 + k1, k2 - k1);
-                double C = std::sqrt((k1*k1 + k2*k2) / 2.0);
-
-                // Normals
-                double nx = -_dx;
-                double ny = -_dy;
-                double nz = 1.0;
-                double norm = std::sqrt(nx*nx + ny*ny + nz*nz) + eps;
-                nx /= norm; ny /= norm; nz /= norm;
-
-                double alpha = std::atan2(ny, nx);
-                double beta = std::atan2(nz, std::sqrt(nx*nx + ny*ny));
-
-                G_vec.push_back(G);
-                M_vec.push_back(M);
-                k1_vec.push_back(k1);
-                k2_vec.push_back(k2);
-                S_vec.push_back(S);
-                C_vec.push_back(C);
-                alpha_vec.push_back(alpha);
-                beta_vec.push_back(beta);
+        auto compute_deriv_x = [&](const double* src, std::vector<double>& dst) {
+            for(int r=0; r<rows; ++r) {
+                for(int c=0; c<cols; ++c) {
+                    double v_left = src[r*cols + clamp_idx(c-1, cols)];
+                    double v_right = src[r*cols + clamp_idx(c+1, cols)];
+                    dst[r*cols+c] = 0.5 * (v_right - v_left);
+                }
             }
-        }
-
-        // Compute Mean and Std for all and fill output
-        int out_idx = 0;
-        auto push_stats = [&](const std::vector<double>& v) {
-            double mean = calculate_mean(v);
-            double std = calculate_std(v, mean);
-            out_features[out_idx++] = mean;
-            out_features[out_idx++] = std;
         };
 
-        push_stats(G_vec);
-        push_stats(M_vec);
-        push_stats(k1_vec);
-        push_stats(k2_vec);
-        push_stats(S_vec);
-        push_stats(C_vec);
-        push_stats(alpha_vec);
-        push_stats(beta_vec);
+        auto compute_deriv_y = [&](const double* src, std::vector<double>& dst) {
+            for(int r=0; r<rows; ++r) {
+                for(int c=0; c<cols; ++c) {
+                    double v_up = src[clamp_idx(r-1, rows)*cols + c];
+                    double v_down = src[clamp_idx(r+1, rows)*cols + c];
+                    dst[r*cols+c] = 0.5 * (v_down - v_up);
+                }
+            }
+        };
+
+        compute_deriv_x(depth_data, dx);
+        compute_deriv_y(depth_data, dy);
+        compute_deriv_x(dx.data(), dxdx);
+        compute_deriv_y(dy.data(), dydy);
+        compute_deriv_y(dx.data(), dxdy); 
+        compute_deriv_x(dy.data(), dydx); 
+
+        std::vector<double> stats_buffers[8];
+        
+        for(int i = 0; i < rows * cols; ++i) {
+            double _dx = dx[i];
+            double _dy = dy[i];
+            double _dxdx = dxdx[i];
+            double _dydy = dydy[i];
+            double _dxdy = dxdy[i];
+            double _dydx = dydx[i];
+
+            double denom = 1.0 + _dx*_dx + _dy*_dy;
+            double denom_sq = denom * denom;
+            double G = (_dxdx * _dydy - _dxdy * _dydx) / denom_sq;
+            double M = (_dydy + _dxdx) / (2.0 * std::pow(denom, 1.5));
+
+            double discriminant = std::sqrt(std::max(M*M - G, 0.0));
+            double k1 = M + discriminant;
+            double k2 = M - discriminant;
+
+            double S = (2.0 / M_PI) * std::atan2(k2 + k1, k2 - k1);
+            double C = std::sqrt((k1*k1 + k2*k2) / 2.0);
+
+            double nx = -_dx;
+            double ny = -_dy;
+            double nz = 1.0;
+            double norm = std::sqrt(nx*nx + ny*ny + nz*nz) + eps;
+            nx /= norm; ny /= norm; nz /= norm;
+
+            double alpha = std::atan2(ny, nx);
+            double beta = std::atan2(nz, std::sqrt(nx*nx + ny*ny));
+
+            stats_buffers[0].push_back(G);
+            stats_buffers[1].push_back(M);
+            stats_buffers[2].push_back(k1);
+            stats_buffers[3].push_back(k2);
+            stats_buffers[4].push_back(S);
+            stats_buffers[5].push_back(C);
+            stats_buffers[6].push_back(alpha);
+            stats_buffers[7].push_back(beta);
+        }
+
+        int out_idx = 0;
+        for(int i=0; i<8; ++i) {
+            auto ms = calculate_mean_std(stats_buffers[i]);
+            out_features[out_idx++] = ms.first;
+            out_features[out_idx++] = ms.second;
+        }
     }
 }

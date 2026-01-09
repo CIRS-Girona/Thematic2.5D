@@ -6,8 +6,8 @@ import matplotlib.pyplot as plt
 from typing import Literal
 import datetime, os
 
-from .data_loader import load_features, save_features
-from ..classification import SVMModel
+from ..utils import load_features, save_features
+from . import SVMModel
 
 
 def train_model(dataset_dir: str, features_dir: str, models_dir: str, results_dir: str, uxo_start_code: int, binary_mode: bool = False, test_size: float = 0.1, n_components: int = 100, dimension: Literal['2', '25', '3'] = '25', use_saved_features: bool = True, subset_size: int = 0) -> None:

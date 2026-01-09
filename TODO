@@ -2,15 +2,11 @@
 - [ ] Merge the metric pipeline and make it a section in the config
     - [ ] In the generated CSVs, add a column with inference performance of each trained model present
 
-sudo apt-get install libeigen3-dev
-
-g++ -O3 -shared -fPIC -o libfastmetrics.so image_metrics.cpp
-
 Dataset Creation (1 image): ~40 seconds -> 
-Feature Processing (3 images): ~110 seconds -> 
+Feature Processing (3 images): ~110 seconds -> ~6 seconds
 Training model (3 images): ~1 second
 Running Inference (1 image):
   - Superpixel ~93 seconds -> ~5 seconds
   - Patch extraction ~31 seconds -> 
-  - Feature extraction ~2961 seconds ->
-  - Inference ~16 seconds ->
+  - Feature extraction ~2961 seconds -> 133 seconds
+  - Inference ~16 seconds

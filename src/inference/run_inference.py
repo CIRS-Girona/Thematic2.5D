@@ -3,9 +3,8 @@ import cv2
 import os
 from time import perf_counter
 
-from .feature_extraction import extract_features
-from .image_processing import process_images, superpixel_segmentation, apply_mask
-from .dataset_creator import ADJUST_COOR
+from ..feature_extaction import extract_features
+from ..utils import ADJUST_COOR, superpixel_segmentation, apply_mask
 from ..classification import SVMModel
 
 

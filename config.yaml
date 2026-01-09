@@ -14,7 +14,7 @@ directories:
 create_dataset:
   enabled: true                         # Set to `true` to enable dataset creation.
   bg_per_img: 75                        # Maximum number of background patches to extract per input image.
-  uxo_sample_rate: 0.0001               # Fraction of UXO pixels to sample as centers for potential UXO patches.
+  uxo_sample_rate: 0.001               # Fraction of UXO pixels to sample as centers for potential UXO patches.
   uxo_threshold: 0.4                    # Minimum fraction of UXO pixels required within a window for it to be labeled as a UXO patch.
   invalid_threshold: 0.01               # Maximum fraction of invalid pixels (e.g., masked out areas) in a patch; patches exceeding this are skipped.
   window_size: 400                      # Size (in pixels) of the square window extracted from the original image around a sample point.

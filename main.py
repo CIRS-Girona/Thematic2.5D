@@ -3,7 +3,9 @@ from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor
 import numpy as np
 
-from src.utils import create_dataset, train_model, run_inference, meanIoU
+from src.utils import create_dataset, meanIoU
+from src.classification import train_model
+from src.inference import run_inference
 
 
 if __name__ == "__main__":

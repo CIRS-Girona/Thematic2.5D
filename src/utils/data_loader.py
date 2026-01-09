@@ -2,8 +2,7 @@ from typing import Literal, Tuple, List
 import os, cv2, msgpack, gc, time, random
 import numpy as np
 
-from .feature_extraction import extract_features
-from .image_processing import process_images
+from ..feature_extaction import extract_features
 
 
 def load_data(images_dir: str, depth_dir: str, subset: int = 0) -> Tuple[np.ndarray, np.ndarray, List[str]]:
