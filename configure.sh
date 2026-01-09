@@ -1,7 +1,7 @@
 #!/bin/bash
 
 sudo apt update
-sudo apt install -y build-essential git python3-numpy python3-venv cmake libopencv-dev python3-opencv
+sudo apt install -y build-essential git python3-venv libeigen3-dev
 
 # Create and activate virtual environment
 if [ ! -d "venv" ]; then
@@ -9,6 +9,7 @@ if [ ! -d "venv" ]; then
 fi
 
 source venv/bin/activate
+pip install --upgrade pip
 pip install -r requirements.txt
 
 # Create deps if it doesn't exist

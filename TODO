@@ -1,4 +1,4 @@
-- [ ] Rewrite the baseline feature extraction code in C++
+- [ ] Optimize the dataset creation and patch extraction process (Inference)
 - [ ] Merge the metric pipeline and make it a section in the config
     - [ ] In the generated CSVs, add a column with inference performance of each trained model present
 
