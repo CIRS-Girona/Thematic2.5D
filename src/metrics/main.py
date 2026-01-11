@@ -1,14 +1,16 @@
-import yaml, os, gc, tqdm
+import yaml, os, logging, tqdm
 from concurrent.futures import ThreadPoolExecutor
 
 from src.parsers import Agisoft, Meshroom
 from src.colormap import Colormap
 from src.pipeline import Pipeline
 
+logger = logging.getLogger(__name__)
+
 
 if __name__ == "__main__":
     if not os.path.exists('config.yaml') or not os.path.isfile('config.yaml'):
-        print("Couldn't find config file 'config.yaml'")
+        logger.error("Couldn't find config file 'config.yaml'")
         exit()
 
     with open('config.yaml', 'r') as file:
@@ -33,7 +35,7 @@ if __name__ == "__main__":
     colormap = Colormap(colormap_path)
 
     def run_pipeline(d):
-        print(f"Processing {d}")
+        logger.info(f"Processing {d}")
 
         imgs = []
         for img in os.listdir(f"{d}/{masks_dir}"):
@@ -64,9 +66,6 @@ if __name__ == "__main__":
             camera_type=camera_type,
             visibility=visibility,
         )
-
-        del pipeline
-        gc.collect()
 
     with ThreadPoolExecutor(max_workers=thread_count) as exe:
         exe.map(run_pipeline, dirs)

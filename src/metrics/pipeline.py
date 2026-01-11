@@ -89,8 +89,3 @@ class Pipeline:
                 })
 
                 self.toFile()
-
-            del img, depth, mask
-            gc.collect()
-
-

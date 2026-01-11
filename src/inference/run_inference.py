@@ -1,12 +1,13 @@
 import numpy as np
 import cv2
-import os
-from time import perf_counter
+import os, logging
 from typing import Tuple
 
-from ..feature_extaction import extract_features
+from ..features import extract_features
 from ..utils import superpixel_segmentation, apply_mask
 from ..classification import SVMModel
+
+logger = logging.getLogger(__name__)
 
 
 def get_window_bounds(centers: np.ndarray, radius: int, max_val: int) -> Tuple[np.ndarray, np.ndarray]:
@@ -78,14 +79,9 @@ def run_inference(
     window_radius = window_size // 2
 
     # Superpixel Segmentation
-    s = perf_counter()
     labels, centroids = superpixel_segmentation(img, num_components=num_components, compactness=compactness)
-    print(f"Superpixel segmentation completed in {perf_counter() - s:.2f} seconds.")
 
     # Vectorized Coordinate Generation
-    s = perf_counter()
-    
-    # Split centroids
     c_x = centroids[:, 1]
     c_y = centroids[:, 0]
     
@@ -134,13 +130,7 @@ def run_inference(
         cv2.resize(ts, (patch_size, patch_size), dst=batch_imgs[i], interpolation=cv2.INTER_AREA)
         cv2.resize(ds, (patch_size, patch_size), dst=batch_depths[i], interpolation=cv2.INTER_AREA)
 
-    print(f"Patch extraction ({num_patches} patches) completed in {perf_counter() - s:.2f} seconds.")
-
-    s = perf_counter()
     features_2d, features_3d = extract_features(batch_imgs, batch_depths)
-    print(f"Feature extraction completed in {perf_counter() - s:.2f} seconds.")
-
-    s = perf_counter()
     model_files = os.listdir(models_dir)
     
     # Pre-calculate feature concatenations to avoid doing it inside the loop if possible
@@ -218,5 +208,3 @@ def run_inference(
             inference_img = apply_mask(img, uxo_mask_vis, mode='highlight')
 
         cv2.imwrite(f"{inference_dir}/{img_label}.jpg", inference_img)
-
-    print(f"Total Inference completed in {perf_counter() - s:.2f} seconds.")

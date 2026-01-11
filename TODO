@@ -1,3 +1,2 @@
-- [ ] Use a logger instead of print statements
 - [ ] Merge the metric pipeline and make it a section in the config
     - [ ] In the generated CSVs, add a column with inference performance of each trained model present

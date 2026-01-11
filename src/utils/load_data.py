@@ -1,8 +1,10 @@
 from typing import Literal, Tuple, List
-import os, cv2, msgpack, gc, time, random
+import os, cv2, msgpack, time, random, logging
 import numpy as np
 
-from ..feature_extaction import extract_features
+from ..features import extract_features
+
+logger = logging.getLogger(__name__)
 
 
 def load_data(images_dir: str, depth_dir: str, subset: int = 0) -> Tuple[np.ndarray, np.ndarray, List[str]]:
@@ -87,7 +89,7 @@ def save_features(images_dir: str, depth_dir: str, features_dir: str, subset: in
     if not os.path.exists(features_dir) or not os.path.isdir(features_dir):
         os.makedirs(features_dir)
 
-    print("Loading data...")
+    logger.info("Loading data...")
 
     t_start = time.perf_counter()
     images, depths, labels = load_data(images_dir, depth_dir, subset)
@@ -95,37 +97,27 @@ def save_features(images_dir: str, depth_dir: str, features_dir: str, subset: in
     with open(f"{features_dir}/labels.msgpack", 'wb') as f:
         f.write(msgpack.packb(labels))
 
-    del labels
-    gc.collect()
+    logger.info(f"Loaded data and saved labels: {get_time(t_start)}s")
 
-    print(f"Loaded data and saved labels: {get_time(t_start)}s")
-
-    print("Extracting features...")
+    logger.info("Extracting features...")
     t_start = time.perf_counter()
     features_2d, features_3d = extract_features(images, depths)
 
-    del depths, images
-    gc.collect()
-
-    print(f"Extracted features: {get_time(t_start)}s")
+    logger.info(f"Extracted features: {get_time(t_start)}s")
 
     if features_3d is not None and features_3d.size > 0:
         features = features_3d
         with open(f"{features_dir}/features_3D.msgpack", 'wb') as f:
             f.write(msgpack.packb(features.tolist()))
 
-        print(f"Features 3D Shape: {features.shape}")
-        del features
-        gc.collect()
+        logger.info(f"Features 3D Shape: {features.shape}")
 
     if features_2d is not None and features_2d.size > 0:
         features = features_2d
         with open(f"{features_dir}/features_2D.msgpack", 'wb') as f:
             f.write(msgpack.packb(features.tolist()))
 
-        print(f"Features 2D Shape: {features.shape}")
-        del features
-        gc.collect()
+        logger.info(f"Features 2D Shape: {features.shape}")
 
 
 def load_features(features_dir: str, dimension: Literal['2', '25', '3'] = '2') -> Tuple[np.ndarray, np.ndarray]:
@@ -147,14 +139,14 @@ def load_features(features_dir: str, dimension: Literal['2', '25', '3'] = '2') -
 
     features = None
     if dimension == '2' or dimension == '25':
-        print("Loading 2D Features")
+        logger.info("Loading 2D Features")
         with open(f"{features_dir}/features_2D.msgpack", 'rb') as f:
             features_2d = np.array(msgpack.unpackb(f.read()))
 
         features = features_2d
 
     if dimension == '3' or dimension == '25':
-        print("Loading 3D Features")
+        logger.info("Loading 3D Features")
         with open(f"{features_dir}/features_3D.msgpack", 'rb') as f:
             features_3d = np.array(msgpack.unpackb(f.read()))
 

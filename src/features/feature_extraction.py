@@ -1,11 +1,13 @@
 import numpy as np
-import time, datetime
+import time, datetime, logging
 from threading import Thread
 import cv2
 import ctypes
 from typing import List, Tuple
 
 from ..utils import load_cpp_library
+
+logger = logging.getLogger(__name__)
 
 # Load the C++ library
 LIB = load_cpp_library("libfastfeatures.so")
@@ -229,10 +231,10 @@ def extract_features(images: List[np.ndarray], depths: List[np.ndarray]) -> Tupl
         - The first array contains the concatenated 2D features.
         - The second array contains the concatenated 3D features (empty if depth is None).
     """
-    logger = lambda name, t, f: (
-        print(f"Started processing {name}: {datetime.datetime.now().isoformat()}"),
+    data_logger = lambda name, t, f: (
+        logger.info(f"Started processing {name}: {datetime.datetime.now().isoformat()}"),
         f(),
-        print(f"Finished processing {name}: {round(time.perf_counter() - t, 2)} seconds")
+        logger.info(f"Finished processing {name}: {round(time.perf_counter() - t, 2)} seconds")
     )
 
     images_gray, images_hsv = [], []
@@ -250,7 +252,7 @@ def extract_features(images: List[np.ndarray], depths: List[np.ndarray]) -> Tupl
     ts: List[Thread] = []
 
     # Add color features
-    ts.append(Thread(target=logger,
+    ts.append(Thread(target=data_logger,
         args=(
             "Gray Color Features",
             time.perf_counter(),
@@ -259,7 +261,7 @@ def extract_features(images: List[np.ndarray], depths: List[np.ndarray]) -> Tupl
     ))
 
     # Add color HSV features
-    ts.append(Thread(target=logger,
+    ts.append(Thread(target=data_logger,
         args=(
             "HSV Color Features",
             time.perf_counter(),
@@ -267,7 +269,7 @@ def extract_features(images: List[np.ndarray], depths: List[np.ndarray]) -> Tupl
         )
     ))
 
-    ts.append(Thread(target=logger,
+    ts.append(Thread(target=data_logger,
         args=(
             "LBP Features",
             time.perf_counter(),
@@ -275,7 +277,7 @@ def extract_features(images: List[np.ndarray], depths: List[np.ndarray]) -> Tupl
         )
     ))
 
-    ts.append(Thread(target=logger,
+    ts.append(Thread(target=data_logger,
         args=(
             "GLCM Features",
             time.perf_counter(),
@@ -283,7 +285,7 @@ def extract_features(images: List[np.ndarray], depths: List[np.ndarray]) -> Tupl
         )
     ))
 
-    ts.append(Thread(target=logger,
+    ts.append(Thread(target=data_logger,
         args=(
             "HOG Features",
             time.perf_counter(),
@@ -292,7 +294,7 @@ def extract_features(images: List[np.ndarray], depths: List[np.ndarray]) -> Tupl
     ))
 
     if depths is not None:
-        ts.append(Thread(target=logger,
+        ts.append(Thread(target=data_logger,
             args=(
                 "Principal Plane Features",
                 time.perf_counter(),
@@ -300,7 +302,7 @@ def extract_features(images: List[np.ndarray], depths: List[np.ndarray]) -> Tupl
             )
         ))
 
-        ts.append(Thread(target=logger,
+        ts.append(Thread(target=data_logger,
             args=(
                 "Curvature and Surface Normal Features",
                 time.perf_counter(),
@@ -308,7 +310,7 @@ def extract_features(images: List[np.ndarray], depths: List[np.ndarray]) -> Tupl
             )
         ))
 
-        ts.append(Thread(target=logger,
+        ts.append(Thread(target=data_logger,
             args=(
                 "Symmetry Features",
                 time.perf_counter(),

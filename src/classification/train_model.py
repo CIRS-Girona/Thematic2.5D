@@ -4,10 +4,12 @@ from sklearn.model_selection import train_test_split
 import numpy as np
 import matplotlib.pyplot as plt
 from typing import Literal
-import datetime, os
+import datetime, os, logging
 
 from ..utils import load_features, save_features
 from . import SVMModel
+
+logger = logging.getLogger(__name__)
 
 
 def train_model(dataset_dir: str, features_dir: str, models_dir: str, results_dir: str, uxo_start_code: int, binary_mode: bool = False, test_size: float = 0.1, n_components: int = 100, dimension: Literal['2', '25', '3'] = '25', use_saved_features: bool = True, subset_size: int = 0) -> None:
@@ -44,7 +46,7 @@ def train_model(dataset_dir: str, features_dir: str, models_dir: str, results_di
             else:
                 y_data[y == y_data] = 'background'
 
-    print(f"Training start time: {datetime.datetime.now().isoformat()}")
+    logger.info(f"Training start time: {datetime.datetime.now().isoformat()}")
 
     X_train, X_test, y_train, y_test = train_test_split(X_data, y_data, stratify=y_data, test_size=test_size)
 
@@ -60,7 +62,7 @@ def train_model(dataset_dir: str, features_dir: str, models_dir: str, results_di
         datafile_name = f"{model.name}{dimension}"
 
     report = classification_report(y_test, y_pred, zero_division=0)
-    print(report) # Print to console
+    logger.info(report)
 
     os.makedirs(results_dir, exist_ok=True)
     with open(f"{results_dir}/{datafile_name}.txt", 'w') as f:

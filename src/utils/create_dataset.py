@@ -245,7 +245,6 @@ def create_dataset(
             )
 
     # Main Execution
-    print(f"Started processing dataset {prefix}")
     mask_files = os.listdir(masks_path)
     labels = ['.'.join(f.split('.')[:-1]) for f in mask_files if f.endswith(('.png', '.jpg'))]
 

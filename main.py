@@ -1,4 +1,4 @@
-import os, yaml, cv2, gc
+import os, yaml, cv2, time, logging
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor
 import numpy as np
@@ -6,6 +6,8 @@ import numpy as np
 from src.utils import create_dataset, meanIoU
 from src.classification import train_model
 from src.inference import run_inference
+
+logger = logging.getLogger(__name__)
 
 
 if __name__ == "__main__":
@@ -19,6 +21,7 @@ if __name__ == "__main__":
     results_dir = config['directories']['results_dir']
     models_dir = config['directories']['models_dir']
     features_dir = config['directories']['features_dir']
+    logging_dir = config['directories']['logging_dir']
 
     thread_count = config['thread_count']
 
@@ -32,6 +35,7 @@ if __name__ == "__main__":
         results_dir,
         models_dir,
         features_dir,
+        logging_dir,
         f"{dataset_dir}/2D/",
         f"{dataset_dir}/2D/background",
         f"{dataset_dir}/3D/",
@@ -42,9 +46,16 @@ if __name__ == "__main__":
         if not os.path.exists(dir_path) or not os.path.isdir(dir_path):
             os.makedirs(dir_path)
 
+    logging.basicConfig(
+        format='%(asctime)s - %(name)s - [%(levelname)s]: %(message)s',
+        datefmt='%m/%d/%Y %I:%M:%S %p',
+        filename=f"{config['directories']['logging_dir']}/{time.time()}.log",
+        level=logging.INFO
+    )
+
     # Process according to config modes
     if config['create_dataset']['enabled']:
-        print("Creating dataset...")
+        logger.info("Creating dataset...")
 
         for dtset in os.listdir(input_dir):
             if not os.path.isdir(f"{input_dir}/{dtset}"):
@@ -69,7 +80,7 @@ if __name__ == "__main__":
             )
 
     if config['train_model']['enabled']:
-        print("Training model...")
+        logger.info("Training model...")
         train_model(
             dataset_dir=dataset_dir,
             features_dir=features_dir,
@@ -85,7 +96,7 @@ if __name__ == "__main__":
         )
 
     if config['run_inference']['enabled']:
-        print("Running inference...")
+        logger.info("Running inference...")
 
         args = []
         for img in os.listdir(config['run_inference']['depth_path']):
@@ -121,7 +132,7 @@ if __name__ == "__main__":
             ))
 
     if config['evaluate_results']['enabled']:
-        print("Evaluating results...")
+        logger.info("Evaluating results...")
 
         for dir in os.listdir(results_dir):
             curr_dir = f"{results_dir}/{dir}"
@@ -129,7 +140,7 @@ if __name__ == "__main__":
             if not os.path.isdir(curr_dir):
                 continue
 
-            print(f"Evaluating results for {dir}")
+            logger.info(f"Evaluating results for {dir}")
 
             miou_scores = {}
             for mask in tqdm(os.listdir(config['evaluate_results']['mask_path'])):
@@ -146,9 +157,6 @@ if __name__ == "__main__":
                     mask_gt[mask_gt > 0] = 1
 
                 miou_scores[label] = meanIoU(mask_gt, mask_result)
-
-                del mask_gt, mask_result
-                gc.collect()
 
             with open(f"{results_dir}/{dir}-mIoU.txt", 'w') as f:
                 f.write(f"Average mIoU score: {np.mean(tuple(miou_scores.values()))}\n\n")

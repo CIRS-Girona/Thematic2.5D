@@ -2,7 +2,7 @@ invalid_code: -1
 uxo_start_code: 5
 max_uxo_code: 8
 
-thread_count: 1                       # Number of threads to use for parallel processing.
+thread_count: 1                         # Number of threads to use for parallel processing.
 
 directories:
   input_dir: tests/samples              # Directory containing the input tiled data (images, depths, masks).
@@ -10,6 +10,7 @@ directories:
   results_dir: tests/data/results       # Directory to save classification reports and inference output images.
   models_dir: tests/data/models         # Directory to save trained model files.
   features_dir: tests/data/features     # Directory to save extracted features.
+  logging_dir: tests/data/logs          # Directory to save logging information.
 
 create_dataset:
   enabled: true                         # Set to `true` to enable dataset creation.

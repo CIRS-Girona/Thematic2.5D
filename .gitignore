@@ -5,6 +5,7 @@ dataset/
 venv/
 jats/
 deps/
+logs/
 .vscode/
 *.tif
 *.pkl
