@@ -13,20 +13,9 @@ logger = logging.getLogger(__name__)
 LIB = load_cpp_library("libfastfeatures.so")
 
 # --- Ctypes Definitions ---
-
 POINTER_DOUBLE = ctypes.POINTER(ctypes.c_double)
 NP_FLOAT64_C = np.ctypeslib.ndpointer(dtype=np.float64, flags='C_CONTIGUOUS')
 NP_UINT8_C = np.ctypeslib.ndpointer(dtype=np.uint8, flags='C_CONTIGUOUS')
-
-# contrast_stretch_c
-LIB.contrast_stretch_c.restype = None
-LIB.contrast_stretch_c.argtypes = [
-    NP_UINT8_C,      # src
-    ctypes.c_int,    # rows
-    ctypes.c_int,    # cols
-    ctypes.c_int,    # channels
-    NP_UINT8_C       # dst
-]
 
 # extract_color_features_c
 LIB.extract_color_features_c.restype = None
@@ -69,6 +58,16 @@ LIB.extract_hog_features_c.argtypes = [
     POINTER_DOUBLE   # out_features
 ]
 
+# extract_hog_features_depth_c
+LIB.extract_hog_features_depth_c.restype = None
+LIB.extract_hog_features_depth_c.argtypes = [
+    NP_FLOAT64_C,    # depth map (double)
+    ctypes.c_int,    # rows
+    ctypes.c_int,    # cols
+    ctypes.c_int,    # n_bins
+    POINTER_DOUBLE   # out_features
+]
+
 # extract_principal_plane_features_c
 LIB.extract_principal_plane_features_c.restype = None
 LIB.extract_principal_plane_features_c.argtypes = [
@@ -92,18 +91,6 @@ LIB.extract_curvatures_c.argtypes = [
 # =================================================================
 #  PYTHON WRAPPER FUNCTIONS
 # =================================================================
-
-def contrast_stretch(image: np.ndarray) -> np.ndarray:
-    """Applies contrast stretching using C++ backend."""
-    img_c = np.ascontiguousarray(image, dtype=np.uint8)
-    rows, cols = img_c.shape[:2]
-    channels = 1 if img_c.ndim == 2 else img_c.shape[2]
-    dst = np.empty_like(img_c)
-    LIB.contrast_stretch_c(img_c, rows, cols, channels, dst)
-
-    return dst
-
-
 def extract_color_features(image: np.ndarray, bins: int = 8, range_val: Tuple[int, int] = (0, 256)) -> np.ndarray:
     """Extracts color histogram using C++ backend."""
     img_c = np.ascontiguousarray(image, dtype=np.uint8)
@@ -147,7 +134,7 @@ def extract_glcm_features(image: np.ndarray) -> np.ndarray:
     return out_features
 
 
-def extract_hog_features(image: np.ndarray, n_bins: int = 9) -> List[float]:
+def extract_hog_features(image: np.ndarray, n_bins: int = 9) -> np.ndarray:
     """
     Extracts HOG features using C++ backend.
     Returns 9 Histogram bins + 4 Magnitude stats (Mean, Std, Skew, Kurt).
@@ -162,10 +149,29 @@ def extract_hog_features(image: np.ndarray, n_bins: int = 9) -> List[float]:
     
     LIB.extract_hog_features_c(img_c, rows, cols, n_bins, out_ptr)
 
-    return out_features.tolist()
+    return out_features
 
 
-def extract_principal_plane_features(depth_patch: np.ndarray, eps: float = 1e-6) -> List[float]:
+def extract_symmetry_features(depth_patch: np.ndarray, n_bins: int = 9) -> np.ndarray:
+    """
+    Extracts HOG-based symmetry features directly from floating point depth maps.
+    Does NOT cast to uint8 to preserve depth gradients.
+    """
+    # Ensure contiguous float64 array
+    depth_c = np.ascontiguousarray(depth_patch, dtype=np.float64)
+    rows, cols = depth_c.shape
+
+    # Allocate output: bins + 4 stats
+    out_features = np.zeros(n_bins + 4, dtype=np.double)
+    out_ptr = out_features.ctypes.data_as(POINTER_DOUBLE)
+    
+    # Call the NEW C function
+    LIB.extract_hog_features_depth_c(depth_c, rows, cols, n_bins, out_ptr)
+
+    return out_features
+
+
+def extract_principal_plane_features(depth_patch: np.ndarray, eps: float = 1e-6) -> np.ndarray:
     """Extracts 3D plane features using C++ backend."""
     depth_c = np.ascontiguousarray(depth_patch, dtype=np.float64)
     rows, cols = depth_c.shape
@@ -175,10 +181,10 @@ def extract_principal_plane_features(depth_patch: np.ndarray, eps: float = 1e-6)
     out_ptr = out_features.ctypes.data_as(POINTER_DOUBLE)
     LIB.extract_principal_plane_features_c(depth_c, rows, cols, eps, out_ptr)
 
-    return out_features.tolist()
+    return out_features
 
 
-def extract_curvatures_and_surface_normals(depth_patch: np.ndarray, eps: float = 1e-6) -> List[float]:
+def extract_curvatures_and_surface_normals(depth_patch: np.ndarray, eps: float = 1e-6) -> np.ndarray:
     """Extracts 3D curvature features using C++ backend."""
     depth_c = np.ascontiguousarray(depth_patch, dtype=np.float64)
     rows, cols = depth_c.shape
@@ -188,33 +194,38 @@ def extract_curvatures_and_surface_normals(depth_patch: np.ndarray, eps: float =
     out_ptr = out_features.ctypes.data_as(POINTER_DOUBLE)
     LIB.extract_curvatures_c(depth_c, rows, cols, eps, out_ptr)
 
-    return out_features.tolist()
+    return out_features
 
 
-def contrast_enhancement(image: np.ndarray, clip_limit: float = 2.0, tile_grid_size: Tuple[int, int] = (8, 8)) -> np.ndarray:
+def contrast_stretch(image: np.ndarray, dtype = np.uint8) -> np.ndarray:
     """
-    Applies Contrast Limited Adaptive Histogram Equalization (CLAHE) to enhance image contrast.
+    Applies contrast stretching to the input image using percentile values.
 
-    Enhances the value (V) channel of the input BGR image in HSV color space.
+    Stretches the intensity range of each channel based on the 1.5th and 98.5th percentiles
+    to improve visibility.
 
     Args:
-        image (np.ndarray): The input BGR image (NumPy array).
-        clip_limit (float): Threshold for contrast limiting.
-        tile_grid_size (Tuple[int, int]): Size of the grid for histogram equalization.
+        image (np.ndarray): The input image (NumPy array). Expected to be BGR or grayscale.
 
     Returns:
-        np.ndarray: The contrast-enhanced BGR image (NumPy array).
+        np.ndarray: The contrast-stretched image (NumPy array), with pixel values scaled to 0-255.
     """
-    hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    clahe = cv2.createCLAHE(clipLimit=clip_limit, tileGridSize=tile_grid_size)
-    # The value channel is the intensity of the image (gray scale)
-    hsv_image[:, :, 2] = clahe.apply(hsv_image[:, :, 2])
-    enhanced_image = cv2.cvtColor(hsv_image, cv2.COLOR_HSV2BGR)
+    image_float = image.astype(np.double)
 
-    return enhanced_image
+    # Apply contrast stretching formula
+    # Calculate min/max values based on percentiles for each channel
+    min_vals = np.percentile(image_float, 1.5, axis=(0, 1))
+    max_vals = np.percentile(image_float, 98.5, axis=(0, 1))
+
+    # Get maximum value for dtype
+    max_val = np.iinfo(dtype).max
+
+    # Apply contrast stretching
+    stretched_image = (image_float - min_vals) / (max_vals - min_vals + 1)
+    return np.clip(max_val * stretched_image, 0, max_val).astype(dtype)
 
 
-def extract_features(images: List[np.ndarray], depths: List[np.ndarray]) -> Tuple[np.ndarray, np.ndarray]:
+def extract_features(images: List[np.ndarray], depths: List[np.ndarray], clip_limit: float = 2.0, tile_grid_size: Tuple[int, int] = (8, 8)) -> Tuple[np.ndarray, np.ndarray]:
     """
     Extracts 2D and 3D features from lists of grayscale, HSV, and optional depth patches.
 
@@ -237,15 +248,14 @@ def extract_features(images: List[np.ndarray], depths: List[np.ndarray]) -> Tupl
         logger.info(f"Finished processing {name}: {round(time.perf_counter() - t, 2)} seconds")
     )
 
-    images_gray, images_hsv = [], []
-    for image in images:
-        processed_image = contrast_enhancement(image.copy())
-        processed_image = contrast_stretch(processed_image)
+    clahe = cv2.createCLAHE(clipLimit=clip_limit, tileGridSize=tile_grid_size)
 
-        images_gray.append(cv2.cvtColor(processed_image, cv2.COLOR_BGR2GRAY))
-        images_hsv.append(cv2.cvtColor(processed_image, cv2.COLOR_BGR2HSV))
+    s = time.perf_counter()
 
-    images_gray, images_hsv = np.array(images_gray), np.array(images_hsv)
+    images_hsv = [contrast_stretch(cv2.cvtColor(img, cv2.COLOR_BGR2HSV)) for img in images]
+    images_gray = [clahe.apply(img[:, :, 2]) for img in images_hsv]
+
+    logger.info(f"Preprocessing completed in {time.perf_counter() - s:.2f} seconds.")
 
     features: dict[str, List[np.ndarray]] = {}
 
@@ -314,7 +324,7 @@ def extract_features(images: List[np.ndarray], depths: List[np.ndarray]) -> Tupl
             args=(
                 "Symmetry Features",
                 time.perf_counter(),
-                lambda: features.update({'symmetry': [extract_hog_features(d) for d in depths]})
+                lambda: features.update({'symmetry': [extract_symmetry_features(d) for d in depths]})
             )
         ))
 

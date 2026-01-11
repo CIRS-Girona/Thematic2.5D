@@ -79,21 +79,23 @@ if __name__ == "__main__":
                 angles=config['create_dataset']['angles']
             )
 
-    if config['train_model']['enabled']:
-        logger.info("Training model...")
-        train_model(
-            dataset_dir=dataset_dir,
-            features_dir=features_dir,
-            models_dir=models_dir,
-            results_dir=results_dir,
-            uxo_start_code=config['uxo_start_code'],
-            binary_mode=config['train_model']['binary_mode'],
-            test_size=config['train_model']['test_size'],
-            n_components=config['train_model']['n_components'],
-            dimension=config['train_model']['dimension'],
-            use_saved_features=config['train_model']['use_saved_features'],
-            subset_size=config['train_model']['subset_size']
-        )
+    if config['train_models']['enabled']:
+        logger.info("Training models...")
+
+        for binary in (True, False):
+            for dimension in ('25', '3', '2'):
+                train_model(
+                    dataset_dir=dataset_dir,
+                    features_dir=features_dir,
+                    models_dir=models_dir,
+                    results_dir=results_dir,
+                    uxo_start_code=config['uxo_start_code'],
+                    binary_mode=binary,
+                    test_size=config['train_models']['test_size'],
+                    n_components=config['train_models']['n_components'],
+                    dimension=dimension,
+                    subset_size=config['train_models']['subset_size']
+                )
 
     if config['run_inference']['enabled']:
         logger.info("Running inference...")

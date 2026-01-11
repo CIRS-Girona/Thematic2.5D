@@ -66,18 +66,13 @@ if __name__ == "__main__":
 
     # Enable steps for dataset creation and model training
     config['create_dataset']['enabled'] = True
-    config['train_model']['enabled'] = True
+    config['train_models']['enabled'] = True
     # Disable metric computation, inference, and evaluation for this initial run
     config['compute_metrics']['enabled'] = False
     config['run_inference']['enabled'] = False
     config['evaluate_results']['enabled'] = False
 
-    # Set parameters for the initial training run
-    config['train_model']['dimension'] = '25'
-    # Features will be calculated and saved during this run
-    config['train_model']['use_saved_features'] = False
-
-    print("--- Running initial pipeline: Create Dataset, Extract Features, Train 25D SVM ---")
+    print("--- Running initial pipeline: Create Dataset, Extract Features, Train SVMs ---")
     run_pipeline(config)
 
     # Verify that the expected data directories and files were created and are not empty
@@ -87,30 +82,10 @@ if __name__ == "__main__":
     data_check(MODELS_DIR, check_dir=True, check_empty=True)    # Check for saved model
     data_check(RESULTS_DIR, check_dir=True)                     # Results dir might be empty/have logs
 
-    # Disable dataset creation
+    # Disable dataset creation and model training
     config['create_dataset']['enabled'] = False
-    # Use the features saved from the previous run
-    config['train_model']['use_saved_features'] = True
+    config['train_models']['enabled'] = False
 
-    # Iterate through all defined model dimensions (2D, 3D, 25D)
-    for model in MODELS:
-        # Iterate through both binary and multi-class modes
-        for binary in (True, False):
-            # Update configuration for the current training run
-            config['train_model']['dimension'] = model
-            config['train_model']['binary_mode'] = binary
-
-            run_pipeline(config)
-
-            # Determine the expected output file name based on binary mode
-            file_name = f"SVM{model}_binary" if binary else f"SVM{model}"
-
-            # Check for the resulting classification plot and metrics/config file
-            data_check(f"{RESULTS_DIR}/{file_name}.jpg")
-            data_check(f"{RESULTS_DIR}/{file_name}.txt")
-
-    # Disable model training
-    config['train_model']['enabled'] = False
     # Enable inference and evaluation for the loop
     config['compute_metrics']['enabled'] = True
     config['run_inference']['enabled'] = True
@@ -132,9 +107,9 @@ if __name__ == "__main__":
         for binary in (True, False):
             file_name = f"SVM{model}_binary" if binary else f"SVM{model}"
 
-            # Check for the Mean Intersection over Union (mIoU) summary file
+            data_check(f"{RESULTS_DIR}/{file_name}.jpg")
+            data_check(f"{RESULTS_DIR}/{file_name}.txt")
             data_check(f"{RESULTS_DIR}/{file_name}-mIoU.txt")
-            # Check for the directory containing results/visualizations for each sample
             data_check(f"{RESULTS_DIR}/{file_name}", check_dir=True, check_empty=True)
 
     # Restore the original configuration file

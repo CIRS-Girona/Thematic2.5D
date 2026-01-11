@@ -1,6 +1,6 @@
 import numpy as np
 import cv2
-import os, logging
+import os, time, logging
 from typing import Tuple
 
 from ..features import extract_features
@@ -74,9 +74,11 @@ def run_inference(
     img = cv2.imread(image_path)
     depth = cv2.imread(depth_path, cv2.IMREAD_UNCHANGED)
     img_label = os.path.splitext(os.path.basename(image_path))[0]
-    
+
     h, w = img.shape[:2]
     window_radius = window_size // 2
+
+    s = time.perf_counter()
 
     # Superpixel Segmentation
     labels, centroids = superpixel_segmentation(img, num_components=num_components, compactness=compactness)
@@ -116,19 +118,27 @@ def run_inference(
     crop_x_s, crop_x_e = get_window_bounds(sub_x_flat, window_radius, w)
     crop_y_s, crop_y_e = get_window_bounds(sub_y_flat, window_radius, h)
 
+    logger.info(f"Superpixel segmentation and patch coordinate calculation took {time.perf_counter() - s:.2f} seconds.")
+
+    s = time.perf_counter()
+
     # Batch Extraction & Normalization
     num_patches = len(crop_x_s)
-    # Pre-allocate memory for speed
-    batch_imgs = np.empty((num_patches, patch_size, patch_size, 3), dtype=np.uint8)
-    batch_depths = np.empty((num_patches, patch_size, patch_size), dtype=np.double)
 
-    for i in range(num_patches):
-        # Slicing is fast views, no copy
-        ts = img[crop_y_s[i]:crop_y_e[i], crop_x_s[i]:crop_x_e[i]]
-        ds = depth[crop_y_s[i]:crop_y_e[i], crop_x_s[i]:crop_x_e[i]]
+    batch_imgs = [
+        cv2.resize(
+            img[crop_y_s[i]:crop_y_e[i], crop_x_s[i]:crop_x_e[i]],
+            (patch_size, patch_size), interpolation=cv2.INTER_AREA
+        ) for i in range(num_patches)
+    ]
+    batch_depths = [
+        cv2.resize(
+            depth[crop_y_s[i]:crop_y_e[i], crop_x_s[i]:crop_x_e[i]],
+            (patch_size, patch_size), interpolation=cv2.INTER_AREA
+        ) for i in range(num_patches)
+    ]
 
-        cv2.resize(ts, (patch_size, patch_size), dst=batch_imgs[i], interpolation=cv2.INTER_AREA)
-        cv2.resize(ds, (patch_size, patch_size), dst=batch_depths[i], interpolation=cv2.INTER_AREA)
+    logger.info(f"Patch extraction and resizing for {num_patches} patches took {time.perf_counter() - s:.2f} seconds.")
 
     features_2d, features_3d = extract_features(batch_imgs, batch_depths)
     model_files = os.listdir(models_dir)

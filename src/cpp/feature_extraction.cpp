@@ -70,52 +70,77 @@ inline int clamp_idx(int idx, int max_size) {
     return idx;
 }
 
+/**
+ * @brief Templated HOG implementation to support both byte images and float depth maps.
+ */
+template <typename T>
+void compute_hog_impl(
+    const T* img_data, int rows, int cols, int n_bins,
+    double* out_features)
+{
+    // 1. Clear output buffer
+    // Total features = n_bins + 4 (Mean, Std, Skew, Kurt)
+    int stats_offset = n_bins;
+    int total_len = n_bins + 4;
+    for(int i = 0; i < total_len; ++i) out_features[i] = 0.0;
 
-extern "C" {
+    std::vector<double> mags;
+    mags.reserve(rows * cols);
 
-    /**
-     * @brief Applies contrast stretching based on percentiles.
-     */
-    void contrast_stretch_c(
-        unsigned char* src_data, int rows, int cols, int channels,
-        unsigned char* dst_data)
-    {
-        int num_pixels = rows * cols;
-        std::vector<unsigned char> channel_buffer(num_pixels);
+    double bin_width = 180.0 / n_bins;
+    double total_mag_sum = 0.0;
 
-        for (int ch = 0; ch < channels; ++ch) {
-            for (int i = 0; i < num_pixels; ++i) {
-                channel_buffer[i] = src_data[i * channels + ch];
-            }
+    // 2. Compute Gradients and Accumulate Histogram
+    for(int r = 0; r < rows; ++r) {
+        for(int c = 0; c < cols; ++c) {
+            // Calculate indices with clamping
+            int c_left  = clamp_idx(c - 1, cols);
+            int c_right = clamp_idx(c + 1, cols);
+            int r_up    = clamp_idx(r - 1, rows);
+            int r_down  = clamp_idx(r + 1, rows);
 
-            size_t idx_low = (size_t)(0.015 * num_pixels);
-            size_t idx_high = (size_t)(0.985 * num_pixels);
+            // Central Difference (Auto-casts T to double)
+            double dx = (double)img_data[r * cols + c_right] - (double)img_data[r * cols + c_left];
+            double dy = (double)img_data[r_down * cols + c]  - (double)img_data[r_up * cols + c];
 
-            std::nth_element(channel_buffer.begin(), channel_buffer.begin() + idx_low, channel_buffer.end());
-            unsigned char min_val = channel_buffer[idx_low];
+            double mag = std::sqrt(dx * dx + dy * dy);
+            double ang = std::atan2(dy, dx) * 180.0 / M_PI; // Result in [-180, 180]
 
-            std::nth_element(channel_buffer.begin(), channel_buffer.begin() + idx_high, channel_buffer.end());
-            unsigned char max_val = channel_buffer[idx_high];
+            // Convert to Unsigned Orientation [0, 180)
+            if (ang < 0) ang += 180.0;
+            if (ang >= 180.0) ang -= 180.0;
 
-            float min_f = (float)min_val;
-            float max_f = (float)max_val;
+            // Determine Bin
+            int bin = (int)(ang / bin_width);
+            if (bin >= n_bins) bin = n_bins - 1;
 
-            if (std::abs(max_f - min_f) < 1e-6) {
-                max_f = min_f + 1.0f;
-            }
-
-            float scale = 255.0f / (max_f - min_f);
-
-            for (int i = 0; i < num_pixels; ++i) {
-                unsigned char val = src_data[i * channels + ch];
-                float stretched = (val - min_f) * scale;
-                if (stretched < 0.0f) stretched = 0.0f;
-                if (stretched > 255.0f) stretched = 255.0f;
-                dst_data[i * channels + ch] = (unsigned char)stretched;
-            }
+            // Weighted Voting
+            out_features[bin] += mag;
+            
+            // Store magnitude for stats
+            mags.push_back(mag);
+            total_mag_sum += mag;
         }
     }
 
+    // 3. Normalize Histogram (L1 Norm)
+    if (total_mag_sum > 1e-9) {
+        for(int i = 0; i < n_bins; ++i) {
+            out_features[i] /= total_mag_sum;
+        }
+    }
+
+    // 4. Calculate Magnitude Statistics
+    std::pair<double, double> ms = calculate_mean_std(mags);
+    SkewKurt sk = calculate_skew_kurtosis(mags.data(), mags.size(), ms.first, ms.second);
+
+    out_features[stats_offset + 0] = ms.first;     // Mean
+    out_features[stats_offset + 1] = ms.second;    // Std Dev
+    out_features[stats_offset + 2] = sk.skew;      // Skewness
+    out_features[stats_offset + 3] = sk.kurtosis;  // Kurtosis
+}
+
+extern "C" {
     /**
      * @brief Calculates normalized color histogram.
      */
@@ -270,75 +295,23 @@ extern "C" {
     }
 
     /**
-     * @brief Calculates Histogram of Oriented Gradients (HOG) features.
-     * Computes a global orientation histogram (weighted by magnitude)
-     * and statistical moments of the gradient magnitude.
-     * Returns: [bin_0, ..., bin_N, mean_mag, std_mag, skew_mag, kurt_mag]
+     * @brief Standard HOG for 8-bit Images.
      */
     void extract_hog_features_c(
         unsigned char* img_data, int rows, int cols, int n_bins,
         double* out_features)
     {
-        // 1. Clear output buffer
-        // Total features = n_bins + 4 (Mean, Std, Skew, Kurt)
-        int stats_offset = n_bins;
-        int total_len = n_bins + 4;
-        for(int i = 0; i < total_len; ++i) out_features[i] = 0.0;
+        compute_hog_impl<unsigned char>(img_data, rows, cols, n_bins, out_features);
+    }
 
-        std::vector<double> mags;
-        mags.reserve(rows * cols);
-
-        double bin_width = 180.0 / n_bins;
-        double total_mag_sum = 0.0;
-
-        // 2. Compute Gradients and Accumulate Histogram
-        for(int r = 0; r < rows; ++r) {
-            for(int c = 0; c < cols; ++c) {
-                // Calculate indices with clamping (Replicate Border)
-                int c_left  = clamp_idx(c - 1, cols);
-                int c_right = clamp_idx(c + 1, cols);
-                int r_up    = clamp_idx(r - 1, rows);
-                int r_down  = clamp_idx(r + 1, rows);
-
-                // Central Difference
-                double dx = (double)img_data[r * cols + c_right] - (double)img_data[r * cols + c_left];
-                double dy = (double)img_data[r_down * cols + c]  - (double)img_data[r_up * cols + c];
-
-                double mag = std::sqrt(dx * dx + dy * dy);
-                double ang = std::atan2(dy, dx) * 180.0 / M_PI; // Result in [-180, 180]
-
-                // Convert to Unsigned Orientation [0, 180)
-                if (ang < 0) ang += 180.0;
-                if (ang >= 180.0) ang -= 180.0;
-
-                // Determine Bin (0 to n_bins-1)
-                int bin = (int)(ang / bin_width);
-                if (bin >= n_bins) bin = n_bins - 1;
-
-                // Weighted Voting
-                out_features[bin] += mag;
-                
-                // Store magnitude for stats
-                mags.push_back(mag);
-                total_mag_sum += mag;
-            }
-        }
-
-        // 3. Normalize Histogram (L1 Norm)
-        if (total_mag_sum > 1e-9) {
-            for(int i = 0; i < n_bins; ++i) {
-                out_features[i] /= total_mag_sum;
-            }
-        }
-
-        // 4. Calculate Magnitude Statistics
-        std::pair<double, double> ms = calculate_mean_std(mags);
-        SkewKurt sk = calculate_skew_kurtosis(mags.data(), mags.size(), ms.first, ms.second);
-
-        out_features[stats_offset + 0] = ms.first;     // Mean
-        out_features[stats_offset + 1] = ms.second;    // Std Dev
-        out_features[stats_offset + 2] = sk.skew;      // Skewness
-        out_features[stats_offset + 3] = sk.kurtosis;  // Kurtosis
+    /**
+     * @brief "Symmetry" HOG for Double Precision Depth Maps.
+     */
+    void extract_hog_features_depth_c(
+        double* depth_data, int rows, int cols, int n_bins,
+        double* out_features)
+    {
+        compute_hog_impl<double>(depth_data, rows, cols, n_bins, out_features);
     }
 
     /**

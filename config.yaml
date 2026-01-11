@@ -14,7 +14,7 @@ directories:
 
 create_dataset:
   enabled: true                         # Set to `true` to enable dataset creation.
-  bg_per_img: 75                        # Maximum number of background patches to extract per input image.
+  bg_per_img: 100                       # Maximum number of background patches to extract per input image.
   uxo_sample_rate: 0.0001               # Fraction of UXO pixels to sample as centers for potential UXO patches.
   uxo_threshold: 0.4                    # Minimum fraction of UXO pixels required within a window for it to be labeled as a UXO patch.
   invalid_threshold: 0.01               # Maximum fraction of invalid pixels (e.g., masked out areas) in a patch; patches exceeding this are skipped.
@@ -22,15 +22,11 @@ create_dataset:
   patch_size: 128                       # Size (in pixels) to which the extracted window is resized to create the final patch.
   angles: [0, 90, 180, 270]             # Angles (in degrees) to rotate UXO patches for data augmentation.
 
-train_model:
+train_models:
   enabled: true                         # Set to `true` to enable model training.
-  binary_mode: false                    # Whether to train the model as a binary classifier
   test_size: 0.1                        # Fraction of the data to use for the test set.
   n_components: 500                     # Number of components for Nystroem kernel approximation.
-  use_saved_features: false             # If `true`, loads features from `features_dir`; if `false`, extracts features from the dataset in `dataset_dir`.
   subset_size: 0                        # If > 0, uses a random subset of this size for feature extraction/training (useful for quick tests).
-  dimension: '25'                       # Specifies which data modality to use for training:
-                                        # '2' for 2D (image), '3' for 3D (depth), '25' for 2.5D (both).
 
 compute_metrics:
   enabled: false                         # Set to `true` to enable computation of classification metrics.

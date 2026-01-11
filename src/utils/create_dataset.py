@@ -61,7 +61,7 @@ def process_image_data(
         os.makedirs(bg_2d_dir, exist_ok=True)
         os.makedirs(bg_3d_dir, exist_ok=True)
 
-    for i, (c_y, c_x) in enumerate(zip(y_coords, x_coords)):
+    for _, (c_y, c_x) in enumerate(zip(y_coords, x_coords)):
         # Y-bounds
         if c_y - radius < 0: y_s, y_e = 0, 2 * radius
         elif c_y + radius >= h_img_map: y_s, y_e = h_img_map - 1 - 2 * radius, h_img_map - 1

@@ -91,7 +91,7 @@ class ClassificationModel:
 
         pipeline.append(('training', _ClassificationModel(model)))
 
-        self.model = Pipeline(pipeline, verbose=True)
+        self.model = Pipeline(pipeline)
 
 
     def is_binary(self) -> bool:

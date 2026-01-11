@@ -1,5 +1,5 @@
 from typing import Literal, Tuple, List
-import os, cv2, msgpack, time, random, logging
+import os, cv2, time, random, logging
 import numpy as np
 
 from ..features import extract_features
@@ -94,9 +94,6 @@ def save_features(images_dir: str, depth_dir: str, features_dir: str, subset: in
     t_start = time.perf_counter()
     images, depths, labels = load_data(images_dir, depth_dir, subset)
 
-    with open(f"{features_dir}/labels.msgpack", 'wb') as f:
-        f.write(msgpack.packb(labels))
-
     logger.info(f"Loaded data and saved labels: {get_time(t_start)}s")
 
     logger.info("Extracting features...")
@@ -104,20 +101,10 @@ def save_features(images_dir: str, depth_dir: str, features_dir: str, subset: in
     features_2d, features_3d = extract_features(images, depths)
 
     logger.info(f"Extracted features: {get_time(t_start)}s")
+    logger.info(f"Features 2D Shape: {features_2d.shape}")
+    logger.info(f"Features 3D Shape: {features_3d.shape}")
 
-    if features_3d is not None and features_3d.size > 0:
-        features = features_3d
-        with open(f"{features_dir}/features_3D.msgpack", 'wb') as f:
-            f.write(msgpack.packb(features.tolist()))
-
-        logger.info(f"Features 3D Shape: {features.shape}")
-
-    if features_2d is not None and features_2d.size > 0:
-        features = features_2d
-        with open(f"{features_dir}/features_2D.msgpack", 'wb') as f:
-            f.write(msgpack.packb(features.tolist()))
-
-        logger.info(f"Features 2D Shape: {features.shape}")
+    np.savez(f"{features_dir}/features.npz", labels=labels, features_2d=features_2d, features_3d=features_3d)
 
 
 def load_features(features_dir: str, dimension: Literal['2', '25', '3'] = '2') -> Tuple[np.ndarray, np.ndarray]:
@@ -136,29 +123,20 @@ def load_features(features_dir: str, dimension: Literal['2', '25', '3'] = '2') -
             - features (np.ndarray): A NumPy array of loaded features.
             - labels (List[str]): A list of loaded class labels.
     """
+    data = np.load(f"{features_dir}/features.npz", allow_pickle=True)
+    labels = data['labels']
+    features_2d = data['features_2d']
+    features_3d = data['features_3d']
 
     features = None
-    if dimension == '2' or dimension == '25':
-        logger.info("Loading 2D Features")
-        with open(f"{features_dir}/features_2D.msgpack", 'rb') as f:
-            features_2d = np.array(msgpack.unpackb(f.read()))
-
+    if dimension == '2':
         features = features_2d
-
-    if dimension == '3' or dimension == '25':
-        logger.info("Loading 3D Features")
-        with open(f"{features_dir}/features_3D.msgpack", 'rb') as f:
-            features_3d = np.array(msgpack.unpackb(f.read()))
-
+    elif dimension == '3':
         features = features_3d
-
-    if dimension == '25':
+    else:
         features = np.concatenate((features_2d, features_3d), axis=1)
 
     if features is None:
         raise ValueError(f"Invalid dimension specified: {dimension}. Must be '2', '25', or '3'.")
-
-    with open(f"{features_dir}/labels.msgpack", 'rb') as f:
-        labels = np.array(msgpack.unpackb(f.read()), dtype=str)
 
     return features, labels
