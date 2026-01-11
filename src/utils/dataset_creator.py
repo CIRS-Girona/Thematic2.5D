@@ -1,40 +1,24 @@
 import numpy as np
 import cv2
 import os
-import gc
-import random
 from concurrent.futures import ThreadPoolExecutor
-from typing import Tuple, List, Optional, Callable
+from typing import Tuple
 from tqdm import tqdm
 
 
-ADJUST_COOR: Callable[[int, int, Tuple[int, int]], Tuple[int, int]] = lambda c, r, rnge: (0, 2 * r) if c - r < 0 else (rnge[1] - 1 - 2 * r, rnge[1] - 1) if c + r >= rnge[1] else (c - r, c + r)
-"""
-Adjusts a coordinate and radius to fit within a given range, ensuring the resulting
-window stays within bounds.
-
-Args:
-    c (int): The center coordinate.
-    r (int): The radius around the center.
-    rnge (Tuple[int, int]): A tuple representing the valid range (start, end).
-
-Returns:
-    Tuple[int, int]: A tuple containing the adjusted start and end coordinates of the window.
-"""
-
-
-def process_data(
+def process_image_data(
     image: np.ndarray,
     depth: np.ndarray,
     mask: np.ndarray,
-    indices: List[Tuple[int, int]],
+    indices: Tuple[np.ndarray, np.ndarray], # Passed as Arrays (y_coords, x_coords)
     dataset_dir: str,
     prefix: str,
     uxo_threshold: float,
     invalid_threshold: float,
     window_size: int,
     patch_size: int,
-    angles: Tuple[int]
+    angles: Tuple[int],
+    is_uxo_batch: bool
 ) -> None:
     """
     Processes image, depth, and mask data for a list of specified indices (patch centers).
@@ -62,63 +46,87 @@ def process_data(
         angles (Tuple[int]): A tuple of angles (in degrees) for rotating UXO patches
                                   to create augmented samples.
     """
-    h, w = mask.shape
-    for i, (c_y, c_x) in enumerate(indices):
-        t, m, d = None, None, None
-        gc.collect()
+    h_img_map, w_img_map = mask.shape
+    radius = window_size // 2
+    y_coords, x_coords = indices
+    
+    # Pre-calculate directory paths to avoid doing it in the loop
+    if is_uxo_batch:
+        # For UXO, we must check the specific class per patch, so dirs are resolved in loop
+        pass 
+    else:
+        # Background dirs are constant
+        bg_2d_dir = os.path.join(dataset_dir, "2D", "background")
+        bg_3d_dir = os.path.join(dataset_dir, "3D", "background")
+        os.makedirs(bg_2d_dir, exist_ok=True)
+        os.makedirs(bg_3d_dir, exist_ok=True)
 
-        radius = window_size // 2
+    for i, (c_y, c_x) in enumerate(zip(y_coords, x_coords)):
+        # Y-bounds
+        if c_y - radius < 0: y_s, y_e = 0, 2 * radius
+        elif c_y + radius >= h_img_map: y_s, y_e = h_img_map - 1 - 2 * radius, h_img_map - 1
+        else: y_s, y_e = c_y - radius, c_y + radius
 
-        x_s, x_e = ADJUST_COOR(c_x, radius, (0, w))
-        y_s, y_e = ADJUST_COOR(c_y, radius, (0, h))
+        # X-bounds
+        if c_x - radius < 0: x_s, x_e = 0, 2 * radius
+        elif c_x + radius >= w_img_map: x_s, x_e = w_img_map - 1 - 2 * radius, w_img_map - 1
+        else: x_s, x_e = c_x - radius, c_x + radius
+        
+        # Slicing (NumPy views, very fast)
+        m_patch = mask[y_s:y_e, x_s:x_e]
+        
+        # Fast Invalid Check (using NaN for invalid pixels)
+        # Check percentage of NaNs
+        if np.isnan(m_patch).mean() > invalid_threshold:
+            continue
 
-        t = image[y_s:y_e, x_s:x_e, :]
-        m = mask[y_s:y_e, x_s:x_e]
-        d = depth[y_s:y_e, x_s:x_e]
+        # Extract Data
+        t_patch = image[y_s:y_e, x_s:x_e]
+        d_patch = depth[y_s:y_e, x_s:x_e]
 
-        if np.sum(m == None) / m.size > invalid_threshold:
-            continue # Skip patch if too many invalid pixels
+        # Resize
+        t_resized = cv2.resize(t_patch, (patch_size, patch_size), interpolation=cv2.INTER_AREA)
+        d_resized = cv2.resize(d_patch, (patch_size, patch_size), interpolation=cv2.INTER_AREA)
 
-        if t is not None and d is not None:
-            t_resized = cv2.resize(t, (patch_size, patch_size), interpolation=cv2.INTER_AREA)
-            d_resized = cv2.resize(d, (patch_size, patch_size), interpolation=cv2.INTER_AREA).astype(np.float32)
-
-            # Normalize depth map to 0-255 range
-            d_resized = 255 * (d_resized - np.min(d_resized)) / (np.max(d_resized) - np.min(d_resized))
-            d_resized = d_resized.astype(np.uint8)
-
-            if np.sum(m > 0) / m.size >= uxo_threshold:
-                uxo_number = int(np.unique(m[m > 0])[-1])
-
+        # Classification and Saving
+        if is_uxo_batch:
+            # Check if it actually meets the UXO threshold density
+            # We ignore NaNs in this check by comparing > 0 (NaN comparison always False)
+            valid_mask_pixels = m_patch[~np.isnan(m_patch)]
+            
+            if valid_mask_pixels.size > 0 and (valid_mask_pixels > 0).mean() >= uxo_threshold:
+                # Get class ID (take the max or last unique to determine class)
+                uxo_number = int(np.max(valid_mask_pixels)) 
+                
                 uxo_2d_dir = os.path.join(dataset_dir, "2D", str(uxo_number))
                 uxo_3d_dir = os.path.join(dataset_dir, "3D", str(uxo_number))
                 os.makedirs(uxo_2d_dir, exist_ok=True)
                 os.makedirs(uxo_3d_dir, exist_ok=True)
 
-                # Apply rotations and save augmented UXO patches
-                h_img, w_img = d_resized.shape # Use shape of normalized depth for rotation center
+                h_img, w_img = d_resized.shape
+                center = (w_img // 2, h_img // 2)
+                
                 for angle in angles:
-                    M = cv2.getRotationMatrix2D((w_img // 2, h_img // 2), angle, 1.0)  # Center, rotation angle, scale
-                    t_rot = cv2.warpAffine(t_resized, M, (w_img, h_img))
-                    d_rot = cv2.warpAffine(d_resized, M, (w_img, h_img))
+                    if angle == 0:
+                        t_rot, d_rot = t_resized, d_resized
+                    else:
+                        M = cv2.getRotationMatrix2D(center, angle, 1.0)
+                        t_rot = cv2.warpAffine(t_resized, M, (w_img, h_img))
+                        d_rot = cv2.warpAffine(d_resized, M, (w_img, h_img))
 
-                    cv2.imwrite(os.path.join(uxo_2d_dir, f"{prefix}-{i}_{angle}.png"), t_rot)
-                    cv2.imwrite(os.path.join(uxo_3d_dir, f"{prefix}-{i}_{angle}.png"), d_rot)
+                    # Use an f-string with a unique ID per original coord to avoid collisions
+                    # Using c_y and c_x ensures uniqueness better than loop index 'i' across threads if needed
+                    fname = f"{prefix}-{c_y}_{c_x}_{angle}.png"
+                    cv2.imwrite(os.path.join(uxo_2d_dir, fname), t_rot)
+                    cv2.imwrite(os.path.join(uxo_3d_dir, fname), d_rot)
 
-                    del t_rot, d_rot
-                    gc.collect()
-            elif np.all(m == 0):
-                # Save as background patch
-                bg_2d_dir = os.path.join(dataset_dir, "2D", "background")
-                bg_3d_dir = os.path.join(dataset_dir, "3D", "background")
-                os.makedirs(bg_2d_dir, exist_ok=True)
-                os.makedirs(bg_3d_dir, exist_ok=True)
-
-                cv2.imwrite(os.path.join(bg_2d_dir, f"{prefix}-{i}.png"), t_resized)
-                cv2.imwrite(os.path.join(bg_3d_dir, f"{prefix}-{i}.png"), d_resized)
-
-            del t_resized, d_resized
-            gc.collect()
+        else:
+            # Background Case
+            # Double check it is empty (no UXO pixels)
+            if np.nanmax(m_patch) <= 0:
+                fname = f"{prefix}-{c_y}_{c_x}.png"
+                cv2.imwrite(os.path.join(bg_2d_dir, fname), t_resized)
+                cv2.imwrite(os.path.join(bg_3d_dir, fname), d_resized)
 
 
 def create_dataset(
@@ -130,7 +138,7 @@ def create_dataset(
     invalid_code: int,
     prefix: str = '',
     bg_per_img: int = 20_000,
-    thread_count: int = 64,
+    thread_count: int = 16,
     uxo_sample_rate: float = 0.01,
     uxo_threshold: float = 0.4,
     invalid_threshold: float = 0.01,
@@ -149,8 +157,8 @@ def create_dataset(
         masks_path (str): Path to the directory containing segmentation masks.
         dataset_dir (str): The base directory where the created dataset will be saved.
         uxo_start_code (int): The minimum mask value that indicates a UXO instance.
-                               Mask values less than this (but not invalid_code) are
-                               considered background (set to 0).
+                              Mask values less than this (but not invalid_code) are
+                              considered background (set to 0).
         invalid_code (int): The mask value that indicates an invalid pixel. These
                             pixels are ignored during processing.
         prefix (str): A prefix to add to the filenames within the dataset directory.
@@ -166,73 +174,80 @@ def create_dataset(
         patch_size (int): The target size (width and height) to which extracted patches
                           will be resized.
         angles (Tuple[int]): A tuple of angles (in degrees) for rotating UXO patches
-                                  to create augmented samples.
+                             to create augmented samples.
     """
     def _create_dataset(label: str) -> None:
-        image_path_jpg = os.path.join(images_path, f"{label}.jpg")
-        image_path_png = os.path.join(images_path, f"{label}.png")
+        # Load Data
+        img_path = os.path.join(images_path, f"{label}.jpg")
+        if not os.path.exists(img_path): img_path = os.path.join(images_path, f"{label}.png")
+        if not os.path.exists(img_path): return
 
-        image: Optional[np.ndarray] = None
-        if os.path.exists(image_path_jpg) and os.path.isfile(image_path_jpg):
-            image = cv2.imread(image_path_jpg, cv2.IMREAD_UNCHANGED)
-        elif os.path.exists(image_path_png) and os.path.isfile(image_path_png):
-            image = cv2.imread(image_path_png, cv2.IMREAD_UNCHANGED)
-        else:
-            print(f"Warning: Image file not found for label {label} in {images_path}. Skipping.")
-            return
-
+        image = cv2.imread(img_path, cv2.IMREAD_UNCHANGED)
         depth = cv2.imread(os.path.join(depths_path, f"{label}.png"), cv2.IMREAD_UNCHANGED)
-        mask = cv2.imread(os.path.join(masks_path, f"{label}.png"), cv2.IMREAD_UNCHANGED)
+        mask_raw = cv2.imread(os.path.join(masks_path, f"{label}.png"), cv2.IMREAD_UNCHANGED)
 
-        if image is None or depth is None or mask is None:
-            print(f"Warning: Couldn't read image file, depth map or mask file for label {label}. Skipping.")
-            return
+        if image is None or depth is None or mask_raw is None: return
 
-        mask = mask.astype(np.float32)
-        mask[mask == invalid_code] = None
-        mask[depth == 0] = None
-        mask[mask < uxo_start_code] = 0
+        h, w = mask_raw.shape
 
-        uxo_indices = np.where(mask > 0)
-        uxo_indices_list = list(zip(uxo_indices[0], uxo_indices[1])) # Convert to list of (y, x) tuples
+        # Convert to float for NaN support.
+        mask = mask_raw.astype(np.float32)
+        
+        # Identify Invalid Pixels (Invalid Code or 0-Depth)
+        is_invalid = (mask_raw == invalid_code) | (depth == 0)
+        
+        # Identify UXO Pixels
+        is_uxo = (mask_raw >= uxo_start_code) & (~is_invalid)
+        
+        # Apply NaNs to mask for invalid areas
+        mask[is_invalid] = np.nan
+        # Ensure Background is clearly 0
+        mask[~is_uxo & ~is_invalid] = 0
 
-        uxo_indices_sampled = random.sample(uxo_indices_list, int(len(uxo_indices_list) * uxo_sample_rate))
+        # We need specific locations, so finding them all is necessary.
+        uxo_ys, uxo_xs = np.where(is_uxo)
+        total_uxos = len(uxo_ys)
+        if total_uxos > 0:
+            sample_size = int(total_uxos * uxo_sample_rate)
+            # Use random choice on indices, simpler than zipping and sampling
+            if sample_size > 0:
+                idx = np.random.choice(total_uxos, sample_size, replace=False)
+                process_image_data(
+                    image, depth, mask, (uxo_ys[idx], uxo_xs[idx]),
+                    dataset_dir, f"{label}-{prefix}", uxo_threshold, invalid_threshold,
+                    window_size, patch_size, angles, is_uxo_batch=True
+                )
 
-        # Background indices are where mask is 0 and not NaN
-        bg_indices = np.where(mask == 0)
-        bg_indices_list = list(zip(bg_indices[0], bg_indices[1])) # Convert to list of (y, x) tuples
+        # Generate 20% more than needed to account for invalid hits
+        attempt_count = int(bg_per_img * 1.2) 
+        rand_y = np.random.randint(0, h, attempt_count)
+        rand_x = np.random.randint(0, w, attempt_count)
 
-        bg_indices_sampled = random.sample(bg_indices_list, min(bg_per_img, len(bg_indices_list)))
+        # Vectorized check: Which random points land on valid background?
+        # Check against the boolean masks created earlier (fast access)
+        # We want: Not UXO AND Not Invalid
+        valid_bg_indices = (~is_uxo[rand_y, rand_x]) & (~is_invalid[rand_y, rand_x])
+        
+        # Filter the coordinates
+        bg_y = rand_y[valid_bg_indices]
+        bg_x = rand_x[valid_bg_indices]
 
-        del uxo_indices, uxo_indices_list, bg_indices, bg_indices_list
-        gc.collect()
+        # Trim to exact number required
+        if len(bg_y) > bg_per_img:
+            bg_y = bg_y[:bg_per_img]
+            bg_x = bg_x[:bg_per_img]
 
-        # Processing task for this image
-        process_data(
-            image,
-            depth,
-            mask,
-            uxo_indices_sampled + bg_indices_sampled,
-            dataset_dir,
-            f"{label}-{prefix}", # Use label and prefix for unique filename prefix
-            uxo_threshold,
-            invalid_threshold,
-            window_size,
-            patch_size,
-            angles
-        )
+        if len(bg_y) > 0:
+            process_image_data(
+                image, depth, mask, (bg_y, bg_x),
+                dataset_dir, f"{label}-{prefix}", uxo_threshold, invalid_threshold,
+                window_size, patch_size, angles, is_uxo_batch=False
+            )
 
-        # Delete image, mask, and depth after submitting to free up memory
-        del uxo_indices_sampled, bg_indices_sampled, image, mask, depth
-        gc.collect()
-
+    # Main Execution
     print(f"Started processing dataset {prefix}")
-
     mask_files = os.listdir(masks_path)
-    labels = ['.'.join(f.split('.')[:-1]) for f in mask_files if os.path.isfile(os.path.join(masks_path, f))]
+    labels = ['.'.join(f.split('.')[:-1]) for f in mask_files if f.endswith(('.png', '.jpg'))]
 
     with ThreadPoolExecutor(max_workers=thread_count) as exe:
-        list(tqdm(
-            exe.map(_create_dataset, labels),
-            total=len(labels)
-        ))
+        list(tqdm(exe.map(_create_dataset, labels), total=len(labels)))
