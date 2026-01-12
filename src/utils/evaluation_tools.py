@@ -43,7 +43,7 @@ def superpixel_segmentation(image: np.ndarray, num_components=600, compactness=1
     return labels, centroids
 
 
-def apply_mask(image: np.ndarray, mask: np.ndarray, min_val: int = 0, max_val: int = 1, mode: Literal['contours', 'highlight'] = 'highlight', border_thickness: int = 2, beta: float = 0.3) -> np.ndarray:
+def apply_mask(image: np.ndarray, mask: np.ndarray, max_val: int = 1, mode: Literal['contours', 'highlight'] = 'highlight', border_thickness: int = 2, beta: float = 0.3) -> np.ndarray:
     """
     Applies a mask to an image, visualizing the mask values using a colormap.
 
@@ -55,7 +55,6 @@ def apply_mask(image: np.ndarray, mask: np.ndarray, min_val: int = 0, max_val: i
         mask (np.ndarray): An integer array of the same spatial dimensions as the image,
                            containing integer values representing different regions or categories.
                            Negative values in the mask are ignored.
-        min_val (int): The minimum possible value in the mask, used for colormap scaling.
         max_val (int): The maximum possible value in the mask, used for colormap scaling.
         mode (Literal['contours', 'highlight']): The visualization mode.
                                                'contours': Draw contours around mask regions.
@@ -70,11 +69,9 @@ def apply_mask(image: np.ndarray, mask: np.ndarray, min_val: int = 0, max_val: i
     output_image = image.copy()
 
     valid_vals = np.unique(mask[mask >= 0])
-
     for val in valid_vals:
-        scaled_val = int(255 * (val - min_val) / (max_val - min_val if max_val != min_val else 1))
-        scaled_val = np.clip(scaled_val, 0, 255)
-        color = COLORMAP[scaled_val]
+        scaled_val = int(255 * val / (max_val if max_val != 0 else 1))
+        color = COLORMAP[np.clip(scaled_val, 0, 255)]
 
         if mode == 'contours':
             value_mask = (mask == val).astype(np.uint8) * 255

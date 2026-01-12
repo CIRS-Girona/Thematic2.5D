@@ -12,7 +12,7 @@ from . import SVMModel
 logger = logging.getLogger(__name__)
 
 
-def train_model(dataset_dir: str, features_dir: str, models_dir: str, results_dir: str, uxo_start_code: int, binary_mode: bool = False, test_size: float = 0.1, n_components: int = 100, dimension: Literal['2', '25', '3'] = '25', subset_size: int = 0) -> None:
+def train_model(dataset_dir: str, features_dir: str, models_dir: str, results_dir: str, binary_mode: bool = False, test_size: float = 0.1, n_components: int = 100, dimension: Literal['2', '25', '3'] = '25', subset_size: int = 0) -> None:
     """
     Trains an SVM model using extracted features and evaluates its performance.
 
@@ -25,7 +25,6 @@ def train_model(dataset_dir: str, features_dir: str, models_dir: str, results_di
         features_dir: Directory to save/load the extracted features.
         models_dir: Directory to save the trained SVM model.
         results_dir: Directory to save the classification report and confusion matrix plot.
-        uxo_start_code: The starting integer code representing UXO classes in multi-class mode.
         binary_mode: If True, converts multi-class labels to binary ('uxo' vs 'background'). Defaults to False.
         test_size: The proportion of the dataset to include in the test split. Defaults to 0.1.
         n_components: The number of components for PCA dimensionality reduction within the SVM model. Defaults to 100.
@@ -43,7 +42,7 @@ def train_model(dataset_dir: str, features_dir: str, models_dir: str, results_di
 
     if binary_mode:
         for y in np.unique(y_data):
-            if y.isdigit() and int(y) >= uxo_start_code:
+            if y.isdigit():
                 y_data[y == y_data] = 'uxo'
             else:
                 y_data[y == y_data] = 'background'

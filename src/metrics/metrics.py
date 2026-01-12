@@ -4,7 +4,6 @@ from skimage.filters import sobel
 from typing import List
 import ctypes
 
-from ..cameras import Sensor
 from ..utils import load_cpp_library
 
 # Load the C++ library
@@ -81,7 +80,6 @@ LIB.calculate_uicm_c.argtypes = [
 # =================================================================
 #  PYTHON FUNCTIONS (Wrapper API)
 # =================================================================
-
 def calculate_ground_resolution(sensor: Sensor, u: np.ndarray, v: np.ndarray, z: np.ndarray) -> float:
     """
     Calculates the ground resolution (mm/px) using the fast C++ backend.
@@ -90,7 +88,7 @@ def calculate_ground_resolution(sensor: Sensor, u: np.ndarray, v: np.ndarray, z:
     u_c = np.ascontiguousarray(u, dtype=np.float64)
     v_c = np.ascontiguousarray(v, dtype=np.float64)
     z_c = np.ascontiguousarray(z, dtype=np.float64)
-    
+
     n = len(u_c)
     if n == 0:
         return 0.0
@@ -109,17 +107,17 @@ def calculate_slant(sensor: Sensor, depth: np.ndarray) -> float:
     # Ensure data is C-contiguous and in the correct format (float64)
     depth_c = np.ascontiguousarray(depth, dtype=np.float64)
     rows, cols = depth_c.shape
-    
+
     # Create a C-style double to store the result
     result = ctypes.c_double(0.0)
-    
+
     # Call the C++ function
     LIB.calculate_slant_c(
         depth_c, rows, cols,
         sensor.fx, sensor.fy, sensor.cx, sensor.cy,
         ctypes.byref(result)
     )
-    
+
     return result.value
 
 
@@ -128,19 +126,19 @@ def calculate_UCIQE(img: np.ndarray) -> float:
     Calculates the UCIQE metric using the fast C++ backend.
     The BGR2LAB conversion is still done in Python.
     """
-    # 1. Pre-processing (still in Python)
+    # Pre-processing (still in Python)
     lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
-    
+
     # Ensure data is C-contiguous and in the correct format (uint8)
     lab_c = np.ascontiguousarray(lab, dtype=np.uint8)
     rows, cols, _ = lab_c.shape
-    
+
     # Create a C-style double to store the result
     result = ctypes.c_double(0.0)
-    
-    # 2. Call the C++ function
+
+    # Call the C++ function
     LIB.calculate_uciqe_c(lab_c, rows, cols, ctypes.byref(result))
-    
+
     return result.value
 
 
@@ -153,7 +151,7 @@ def calculate_eme_logamee(img: np.ndarray, blocksize=8, gamma=1026, k=1026) -> L
     result = ctypes.c_double(0.0) # We can re-use this result variable
     
     for c in range(4):
-        # 1. Pre-processing (still in Python)
+        # Pre-processing
         if c == 3:
             ch = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
             is_logamee = True
@@ -167,8 +165,8 @@ def calculate_eme_logamee(img: np.ndarray, blocksize=8, gamma=1026, k=1026) -> L
         # Ensure data is C-contiguous and in the correct format
         ch_c = np.ascontiguousarray(ch, dtype=np.uint8)
         rows, cols = ch_c.shape
-        
-        # 2. Call the C++ helper function
+
+        # Call the C++ helper function
         LIB.calculate_channel_eme_c(
             ch_c, rows, cols, 
             blocksize, is_logamee, 
@@ -184,10 +182,7 @@ def calculate_UIQM(img: np.ndarray) -> float:
     """
     Calculates the UIQM metric, using C++ helpers for UICM and EME.
     """
-    # --- 1. UICM Calculation ---
-    
     # Pre-processing (Python)
-    # **FIX:** Cast to float64 *before* subtraction to avoid uint8 overflow
     rgl = np.sort(img[:, :, 2].astype(np.float64) - img[:, :, 1].astype(np.float64), axis=None)
     ybl = np.sort((img[:, :, 2].astype(np.float64) + img[:, :, 1].astype(np.float64)) / 2 - img[:, :, 0].astype(np.float64), axis=None)
 
@@ -205,11 +200,7 @@ def calculate_UIQM(img: np.ndarray) -> float:
     
     uicm = uicm_result.value
 
-    # --- 2. UISM & UIConM Calculation ---
-    
-    # This now calls our *new*, fast calculate_eme_logamee function
     Beme, Geme, Reme, uiconm = calculate_eme_logamee(img)
     uism = 0.299 * Reme + 0.587 * Geme + 0.114 * Beme
 
-    # --- 3. Final Result ---
     return 0.0282 * uicm + 0.2953 * uism + 3.5753 * uiconm

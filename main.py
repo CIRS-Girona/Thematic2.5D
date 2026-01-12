@@ -66,8 +66,6 @@ if __name__ == "__main__":
                 f"{input_dir}/{dtset}/depths/",
                 f"{input_dir}/{dtset}/masks/",
                 dataset_dir=dataset_dir,
-                uxo_start_code=config['uxo_start_code'],
-                invalid_code=config['invalid_code'],
                 prefix=dtset,
                 bg_per_img=config['create_dataset']['bg_per_img'],
                 thread_count=thread_count,
@@ -89,7 +87,6 @@ if __name__ == "__main__":
                     features_dir=features_dir,
                     models_dir=models_dir,
                     results_dir=results_dir,
-                    uxo_start_code=config['uxo_start_code'],
                     binary_mode=binary,
                     test_size=config['train_models']['test_size'],
                     n_components=config['train_models']['n_components'],
@@ -117,7 +114,6 @@ if __name__ == "__main__":
                 f"{config['run_inference']['depth_path']}/{label}.png",
                 models_dir,
                 results_dir,
-                config['uxo_start_code'],
                 config['max_uxo_code'],
                 config['run_inference']['num_components'],
                 config['run_inference']['compactness'],
@@ -154,7 +150,10 @@ if __name__ == "__main__":
                 mask_gt = cv2.imread(f"{config['evaluate_results']['mask_path']}/{mask}", cv2.IMREAD_UNCHANGED)
                 mask_result = cv2.imread(f"{curr_dir}/{label}_mask.png", cv2.IMREAD_UNCHANGED)
 
-                mask_gt[mask_gt < config['uxo_start_code']] = 0
+                mask_obj = mask_gt[:, :, 1]
+                mask_obj[mask_gt[:, :, 0] == 2] += 1
+                mask_gt = mask_obj
+
                 if "binary" in dir:
                     mask_gt[mask_gt > 0] = 1
 

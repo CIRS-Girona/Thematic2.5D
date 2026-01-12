@@ -40,7 +40,6 @@ def run_inference(
         depth_path: str,
         models_dir: str,
         results_dir: str,
-        uxo_start_code: int,
         max_uxo_code: int,
         num_components: int = 600,
         compactness: int = 10,
@@ -62,7 +61,6 @@ def run_inference(
         depth_path: Path to the input depth map file.
         models_dir: Directory containing the trained SVM models.
         results_dir: Directory to save the inference results (masks and highlighted images).
-        uxo_start_code: The starting integer code representing UXO classes in multi-class models.
         max_uxo_code: The maximum integer code representing UXO classes in multi-class models.
         num_components: Number of superpixels to generate using SLIC for inference.
         compactness: How compact the superpixels are; higher values make them more square.
@@ -180,9 +178,9 @@ def run_inference(
                     mask_val = 1
             else:
                 # Multi-class check
-                if str(pred_class).isdigit() and int(pred_class) >= uxo_start_code:
+                if pred_class.isdigit():
                     is_uxo_class = True
-                    mask_val = int(pred_class)
+                    mask_val = int(pred_class) + 1
 
             if is_uxo_class:
                 # Filter patch indices that predicted this class
@@ -209,12 +207,10 @@ def run_inference(
         cv2.imwrite(f"{inference_dir}/{img_label}_mask.png", uxo_mask.astype(np.uint8))
 
         # Highlight
-        uxo_mask_vis = uxo_mask.copy()
-        uxo_mask_vis[uxo_mask_vis == 0] = np.nan # Use nan for apply_mask to ignore background
-
+        uxo_mask[uxo_mask == 0] = np.nan # Use nan for apply_mask to ignore background
         if not binary_mode:
-            inference_img = apply_mask(img, uxo_mask_vis, min_val=uxo_start_code, max_val=max_uxo_code, mode='highlight')
+            inference_img = apply_mask(img, uxo_mask, max_val=max_uxo_code, mode='highlight')
         else:
-            inference_img = apply_mask(img, uxo_mask_vis, mode='highlight')
+            inference_img = apply_mask(img, uxo_mask, mode='highlight')
 
         cv2.imwrite(f"{inference_dir}/{img_label}.jpg", inference_img)

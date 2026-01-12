@@ -134,8 +134,6 @@ def create_dataset(
     depths_path: str,
     masks_path: str,
     dataset_dir: str,
-    uxo_start_code: int,
-    invalid_code: int,
     prefix: str = '',
     bg_per_img: int = 20_000,
     thread_count: int = 16,
@@ -156,11 +154,6 @@ def create_dataset(
         depths_path (str): Path to the directory containing input depth maps.
         masks_path (str): Path to the directory containing segmentation masks.
         dataset_dir (str): The base directory where the created dataset will be saved.
-        uxo_start_code (int): The minimum mask value that indicates a UXO instance.
-                              Mask values less than this (but not invalid_code) are
-                              considered background (set to 0).
-        invalid_code (int): The mask value that indicates an invalid pixel. These
-                            pixels are ignored during processing.
         prefix (str): A prefix to add to the filenames within the dataset directory.
         bg_per_img (int): The number of background patches to sample per image.
         thread_count (int): The maximum number of worker threads to use for processing.
@@ -188,21 +181,15 @@ def create_dataset(
 
         if image is None or depth is None or mask_raw is None: return
 
-        h, w = mask_raw.shape
+        h, w = depth.shape
 
         # Convert to float for NaN support.
         mask = mask_raw.astype(np.float32)
-        
-        # Identify Invalid Pixels (Invalid Code or 0-Depth)
-        is_invalid = (mask_raw == invalid_code) | (depth == 0)
-        
-        # Identify UXO Pixels
-        is_uxo = (mask_raw >= uxo_start_code) & (~is_invalid)
-        
-        # Apply NaNs to mask for invalid areas
-        mask[is_invalid] = np.nan
-        # Ensure Background is clearly 0
-        mask[~is_uxo & ~is_invalid] = 0
+
+        # Identify Invalid Pixels (Invalid Code or 0-Depth) and UXO Pixels
+        is_invalid = (mask_raw[:, :, 0] == 0) | (depth == 0)
+        is_uxo = (mask_raw[:, :, 0] == 2) & (~is_invalid)
+        is_bg = (mask_raw[:, :, 0] == 1) & (~is_invalid)
 
         # We need specific locations, so finding them all is necessary.
         uxo_ys, uxo_xs = np.where(is_uxo)
@@ -213,7 +200,7 @@ def create_dataset(
             if sample_size > 0:
                 idx = np.random.choice(total_uxos, sample_size, replace=False)
                 process_image_data(
-                    image, depth, mask, (uxo_ys[idx], uxo_xs[idx]),
+                    image, depth, mask[:, :, 1], (uxo_ys[idx], uxo_xs[idx]),
                     dataset_dir, f"{label}-{prefix}", uxo_threshold, invalid_threshold,
                     window_size, patch_size, angles, is_uxo_batch=True
                 )
@@ -223,12 +210,8 @@ def create_dataset(
         rand_y = np.random.randint(0, h, attempt_count)
         rand_x = np.random.randint(0, w, attempt_count)
 
-        # Vectorized check: Which random points land on valid background?
-        # Check against the boolean masks created earlier (fast access)
-        # We want: Not UXO AND Not Invalid
-        valid_bg_indices = (~is_uxo[rand_y, rand_x]) & (~is_invalid[rand_y, rand_x])
-        
         # Filter the coordinates
+        valid_bg_indices = is_bg[rand_y, rand_x]
         bg_y = rand_y[valid_bg_indices]
         bg_x = rand_x[valid_bg_indices]
 
@@ -239,14 +222,14 @@ def create_dataset(
 
         if len(bg_y) > 0:
             process_image_data(
-                image, depth, mask, (bg_y, bg_x),
+                image, depth, mask[:, :, 1], (bg_y, bg_x),
                 dataset_dir, f"{label}-{prefix}", uxo_threshold, invalid_threshold,
                 window_size, patch_size, angles, is_uxo_batch=False
             )
 
     # Main Execution
     mask_files = os.listdir(masks_path)
-    labels = ['.'.join(f.split('.')[:-1]) for f in mask_files if f.endswith(('.png', '.jpg'))]
+    labels = ['.'.join(f.split('.')[:-1]) for f in mask_files if f.endswith(('.png',))]
 
     with ThreadPoolExecutor(max_workers=thread_count) as exe:
         list(tqdm(exe.map(_create_dataset, labels), total=len(labels)))

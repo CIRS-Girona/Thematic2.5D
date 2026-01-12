@@ -21,7 +21,7 @@ def load_data(images_dir: str, depth_dir: str, subset: int = 0) -> Tuple[np.ndar
         Tuple[np.ndarray, np.ndarray, List[str]]: A tuple containing:
             - images (np.ndarray): A NumPy array of loaded images.
             - depths (np.ndarray): A NumPy array of loaded depth maps, or None if depth_dir is None or empty.
-                                           Depth maps are loaded as np.double and NaN values are converted to 0.
+                                        Depth maps are loaded as np.double and NaN values are converted to 0.
             - labels (List[str]): A list of class labels corresponding to each loaded image.
     """
     classes = [d for d in os.listdir(images_dir) if os.path.isdir(os.path.join(images_dir, d))]
@@ -44,7 +44,6 @@ def load_data(images_dir: str, depth_dir: str, subset: int = 0) -> Tuple[np.ndar
     labels: List[str] = []
     images_list: List[np.ndarray] = []
     depths_list: List[np.ndarray] = []
-
     for i, (class_name, image_names) in enumerate(zip(classes, f_names)):
         class_image_dir = os.path.join(images_dir, class_name)
         class_depth_dir = os.path.join(depth_dir, class_name)
@@ -84,23 +83,21 @@ def save_features(images_dir: str, depth_dir: str, features_dir: str, subset: in
                             Creates the directory if it doesn't exist.
         subset (int): If greater than 0, loads and processes a random subset of images.
     """
-    get_time = lambda t: round(time.perf_counter() - t, 2)
-
     if not os.path.exists(features_dir) or not os.path.isdir(features_dir):
         os.makedirs(features_dir)
 
     logger.info("Loading data...")
 
-    t_start = time.perf_counter()
+    s = time.perf_counter()
     images, depths, labels = load_data(images_dir, depth_dir, subset)
 
-    logger.info(f"Loaded data and saved labels: {get_time(t_start)}s")
+    logger.info(f"Loaded data and saved labels: {time.perf_counter() - s:.2f} seconds")
 
     logger.info("Extracting features...")
-    t_start = time.perf_counter()
+    s = time.perf_counter()
     features_2d, features_3d = extract_features(images, depths)
 
-    logger.info(f"Extracted features: {get_time(t_start)}s")
+    logger.info(f"Extracted features: {time.perf_counter() - s:.2f} seconds")
     logger.info(f"Features 2D Shape: {features_2d.shape}")
     logger.info(f"Features 3D Shape: {features_3d.shape}")
 
