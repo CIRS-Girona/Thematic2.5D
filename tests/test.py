@@ -112,6 +112,9 @@ if __name__ == "__main__":
             data_check(f"{RESULTS_DIR}/{file_name}-mIoU.txt")
             data_check(f"{RESULTS_DIR}/{file_name}", check_dir=True, check_empty=True)
 
+    for sample in SAMPLES:
+        data_check(f"{SAMPLE_DIR}/{sample}/metrics.csv")
+
     # Restore the original configuration file
     with open("config.yaml", 'w') as f:
         f.write(original_config)

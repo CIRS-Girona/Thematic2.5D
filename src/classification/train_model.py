@@ -6,8 +6,7 @@ import matplotlib.pyplot as plt
 from typing import Literal
 import time, os, logging
 
-from ..utils import load_features, save_features
-from . import SVMModel
+from . import SVMModel, load_features, save_features
 
 logger = logging.getLogger(__name__)
 

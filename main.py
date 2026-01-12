@@ -3,7 +3,8 @@ from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor
 import numpy as np
 
-from src.utils import create_dataset, meanIoU
+from src.metrics import calculate_and_save_metrics
+from src.utils import create_dataset, meanIoU, camera_parser
 from src.classification import train_model
 from src.inference import run_inference
 
@@ -72,8 +73,8 @@ if __name__ == "__main__":
                 uxo_sample_rate=config['create_dataset']['uxo_sample_rate'],
                 uxo_threshold=config['create_dataset']['uxo_threshold'],
                 invalid_threshold=config['create_dataset']['invalid_threshold'],
-                window_size=config['create_dataset']['window_size'],
-                patch_size=config['create_dataset']['patch_size'],
+                window_size=config['window_size'],
+                patch_size=config['patch_size'],
                 angles=config['create_dataset']['angles']
             )
 
@@ -117,8 +118,8 @@ if __name__ == "__main__":
                 config['max_uxo_code'],
                 config['run_inference']['num_components'],
                 config['run_inference']['compactness'],
-                config['run_inference']['window_size'],
-                config['run_inference']['patch_size'],
+                config['window_size'],
+                config['patch_size'],
                 config['run_inference']['subdivide_axis'],
                 config['run_inference']['threshold'],
             ))
@@ -126,6 +127,46 @@ if __name__ == "__main__":
         with ThreadPoolExecutor(max_workers=thread_count) as exe:
             list(tqdm(
                 exe.map(lambda a: run_inference(*a), args),
+                total=len(args)
+            ))
+
+    if config['compute_metrics']['enabled']:
+        args = []
+        for dtset in os.listdir(input_dir):
+            camera_file = f"{input_dir}/{dtset}/cams.xml"
+            info_file = f"{input_dir}/{dtset}/info.yaml"
+            metric_file = f"{input_dir}/{dtset}/metrics.csv"
+
+            img_path = f"{input_dir}/{dtset}/images/"
+            mask_path = f"{input_dir}/{dtset}/masks/"
+            depth_path = f"{input_dir}/{dtset}/depths/"
+
+            labels = ['.'.join(label.split('.')[:-1]) for label in os.listdir(img_path)]
+
+            sensor = camera_parser(camera_file)[0]
+
+            with open(info_file, 'r') as f:
+                info = yaml.safe_load(f)
+
+                camera_type = info["camera_type"]
+                visibility = info["visibility"]
+
+            args.append((
+                sensor,
+                models_dir,
+                [f"{img_path}/{label}.jpg" for label in labels],
+                [f"{mask_path}/{label}.png" for label in labels],
+                [f"{depth_path}/{label}.png" for label in labels],
+                camera_type,
+                visibility,
+                metric_file,
+                config['window_size'],
+                config['patch_size'],
+            ))
+
+        with ThreadPoolExecutor(max_workers=thread_count) as exe:
+            list(tqdm(
+                exe.map(lambda a: calculate_and_save_metrics(*a), args),
                 total=len(args)
             ))
 

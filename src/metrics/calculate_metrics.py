@@ -1,10 +1,12 @@
 import numpy as np
-import cv2, csv, logging
+import os, cv2, csv, logging
 from typing import List, Tuple
 from time import perf_counter
 
-from ..utils import Sensor
-from .metrics import calculate_ground_resolution, calculate_slant, calculate_UCIQE, calculate_UIQM
+from ..features import extract_features
+from ..utils import Sensor, get_window_bounds
+from ..classification import SVMModel
+from . import calculate_ground_resolution, calculate_slant, calculate_UCIQE, calculate_UIQM
 
 logger = logging.getLogger(__name__)
 
@@ -24,18 +26,29 @@ FIELDS: Tuple[str] = [
     "camera slant (degrees)",
     "UIQM",
     "UCIQUE",
+    "2D binary",
+    "3D binary",
+    "25D binary",
+    "2D",
+    "3D",
+    "25D",
 ]
 
 
 def calculate_and_save_metrics(
     sensor: Sensor,
+    models_dir: str,
     imgs_path: List[str],
     masks_path: List[str],
     depths_path: List[str],
-    output_path: str,
     camera_type: str,
-    visibility: float
+    visibility: float,
+    output_file: str,
+    window_size: int = 400,
+    patch_size: int = 128,
 ):
+    model_files = os.listdir(models_dir)
+
     s = perf_counter()
     logger.info("Starting metric calculations...")
 
@@ -49,13 +62,52 @@ def calculate_and_save_metrics(
         uiqm = calculate_UIQM(img)
         ucique = calculate_UCIQE(img)
 
-        colors = {tuple(c) for c in mask[np.any(mask != (2, 0, 0), axis=2)]}  # Get unique colors
-        for color in colors:
-            indices = np.logical_and(np.all(mask == color, axis=2), depth > 0)
+        uxos = {tuple(c) for c in mask[mask[:, :, 0] == 2]}  # Get unique UXO instances
+        for uxo in uxos:
+            indices = np.logical_and(np.all(mask == uxo, axis=2), depth > 0)
             v, u = np.where(indices)
 
+            y_s, y_e = get_window_bounds(np.array((np.median(v),)), window_size // 2, depth.shape[0])
+            x_s, x_e = get_window_bounds(np.array((np.median(u),)), window_size // 2, depth.shape[1])
+
+            patch_img = cv2.resize(
+                img[y_s[0]:y_e[0], x_s[0]:x_e[0]],
+                (patch_size, patch_size), interpolation=cv2.INTER_NEAREST
+            )
+            patch_depth = cv2.resize(
+                depth[y_s[0]:y_e[0], x_s[0]:x_e[0]],
+                (patch_size, patch_size), interpolation=cv2.INTER_NEAREST
+            )
+
+            features_2d, features_3d = extract_features([patch_img], [patch_depth])
+            feats_combined = np.concatenate((features_2d, features_3d), axis=1)
+
+            model_results = {}
+            for model_name in model_files:
+                # Load Model
+                model = SVMModel(model_dir=models_dir)
+                model.load_model(model_name)
+
+                dimension = model.label
+                binary_mode = model.is_binary()
+
+                # Select Features
+                if dimension == '3':
+                    X = features_3d
+                elif dimension == '2':
+                    X = features_2d
+                else:
+                    X = feats_combined
+
+                y_pred = model.predict(X)
+
+                if binary_mode:
+                    model_results[f"{dimension}D binary"] = int(y_pred[0] == 'uxo')
+                else:
+                    model_results[f"{dimension}D"] = int(y_pred[0] == str(uxo[1]))
+
             data.append({
-                "label": color[2],
+                "label": f"{uxo[1]}_{uxo[2]}",
                 "image": ''.join(img_path.split('/')[-1].split('.')[:-1]),
                 "camera": camera_type,
                 "res. width": depth.shape[1],
@@ -70,14 +122,11 @@ def calculate_and_save_metrics(
                 "camera slant (degrees)": slant,
                 "UIQM": uiqm,
                 "UCIQUE": ucique
-            })
+            } | model_results)
 
-    if output_path.split('.')[-1].lower() != 'csv':
-        output_path += '.csv'
-
-    with open(output_path, 'w') as f:
+    with open(output_file, 'w') as f:
         writer = csv.DictWriter(f, FIELDS)
         writer.writeheader()
         writer.writerows(data)
 
-    logger.info(f"Metric calculations completed in {perf_counter() - s:.2f} seconds. Results saved to {output_path}.")
+    logger.info(f"Metric calculations completed in {perf_counter() - s:.2f} seconds. Results saved to {output_file}.")

@@ -120,3 +120,28 @@ def meanIoU(mask_gt: np.ndarray, mask: np.ndarray) -> float:
         iou_scores += iou
 
     return iou_scores / len(classes)
+
+
+def get_window_bounds(centers: np.ndarray, radius: int, max_val: int) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Vectorized calculation of window bounds with boundary clamping.
+    - If window goes < 0, shift start to 0.
+    - If window goes >= max, shift end to max-1.
+    - Maintains window size of 2*radius.
+    """
+    starts = centers - radius
+    ends = centers + radius
+    
+    # 1. Handle left/top edge underflow
+    underflow_mask = starts < 0
+    starts[underflow_mask] = 0
+    ends[underflow_mask] = 2 * radius
+    
+    # 2. Handle right/bottom edge overflow
+    # Original logic used (range[1] - 1) as the hard stop for 'end'
+    limit = max_val
+    overflow_mask = ends >= limit
+    ends[overflow_mask] = limit - 1
+    starts[overflow_mask] = limit - 1 - (2 * radius)
+    
+    return starts.astype(int), ends.astype(int)

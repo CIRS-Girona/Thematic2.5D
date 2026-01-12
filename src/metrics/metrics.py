@@ -4,7 +4,7 @@ from skimage.filters import sobel
 from typing import List
 import ctypes
 
-from ..utils import load_cpp_library
+from ..utils import load_cpp_library, Sensor
 
 # Load the C++ library
 LIB = load_cpp_library("libfastmetrics.so")

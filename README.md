@@ -32,11 +32,11 @@ This step provides instruction on how to install the project and test the models
 
 **Setting Up the Project:**
 
-It is recommended that a virtual environment is used when running the pipeline. The following is one approach to setup the project using Python's `venv` environment:
+The workspace must be configured before running the project. The following is the recommended approach to setup the project using Python's `venv` environment:
 
 ```bash
+sudo ./configure.sh
 python -m venv venv && source venv/bin/activate
-pip install -r requirements.txt
 ```
 
 **Testing the Pipeline:**

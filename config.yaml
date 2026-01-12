@@ -1,5 +1,5 @@
 compute_metrics:
-  enabled: false
+  enabled: true
 create_dataset:
   angles:
   - 0
@@ -7,12 +7,10 @@ create_dataset:
   - 180
   - 270
   bg_per_img: 100
-  enabled: true
+  enabled: false
   invalid_threshold: 0.01
-  patch_size: 128
   uxo_sample_rate: 0.0001
   uxo_threshold: 0.4
-  window_size: 400
 directories:
   dataset_dir: tests/data/dataset
   features_dir: tests/data/features
@@ -21,22 +19,22 @@ directories:
   models_dir: tests/data/models
   results_dir: tests/data/results
 evaluate_results:
-  enabled: false
+  enabled: true
   mask_path: tests/samples/18mm/masks
 max_uxo_code: 8
+patch_size: 128
 run_inference:
   compactness: 10
   depth_path: tests/samples/18mm/depths
   enabled: false
   image_path: tests/samples/18mm/images
   num_components: 600
-  patch_size: 128
   subdivide_axis: 3
   threshold: 4
-  window_size: 400
 thread_count: 1
 train_models:
-  enabled: true
+  enabled: false
   n_components: 500
   subset_size: 0
   test_size: 0.1
+window_size: 400

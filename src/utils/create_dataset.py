@@ -85,8 +85,8 @@ def process_image_data(
         d_patch = depth[y_s:y_e, x_s:x_e]
 
         # Resize
-        t_resized = cv2.resize(t_patch, (patch_size, patch_size), interpolation=cv2.INTER_AREA)
-        d_resized = cv2.resize(d_patch, (patch_size, patch_size), interpolation=cv2.INTER_AREA)
+        t_resized = cv2.resize(t_patch, (patch_size, patch_size), interpolation=cv2.INTER_NEAREST)
+        d_resized = cv2.resize(d_patch, (patch_size, patch_size), interpolation=cv2.INTER_NEAREST)
 
         # Classification and Saving
         if is_uxo_batch:

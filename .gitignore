@@ -9,7 +9,7 @@ logs/
 .vscode/
 *.tif
 *.pkl
-*.msgpack
+*.csv
 *.large.*
 *.bk.*
 

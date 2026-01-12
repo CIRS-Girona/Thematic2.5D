@@ -4,35 +4,10 @@ import os, time, logging
 from typing import Tuple
 
 from ..features import extract_features
-from ..utils import superpixel_segmentation, apply_mask
+from ..utils import superpixel_segmentation, apply_mask, get_window_bounds
 from ..classification import SVMModel
 
 logger = logging.getLogger(__name__)
-
-
-def get_window_bounds(centers: np.ndarray, radius: int, max_val: int) -> Tuple[np.ndarray, np.ndarray]:
-    """
-    Vectorized calculation of window bounds with boundary clamping.
-    - If window goes < 0, shift start to 0.
-    - If window goes >= max, shift end to max-1.
-    - Maintains window size of 2*radius.
-    """
-    starts = centers - radius
-    ends = centers + radius
-    
-    # 1. Handle left/top edge underflow
-    underflow_mask = starts < 0
-    starts[underflow_mask] = 0
-    ends[underflow_mask] = 2 * radius
-    
-    # 2. Handle right/bottom edge overflow
-    # Original logic used (range[1] - 1) as the hard stop for 'end'
-    limit = max_val
-    overflow_mask = ends >= limit
-    ends[overflow_mask] = limit - 1
-    starts[overflow_mask] = limit - 1 - (2 * radius)
-    
-    return starts, ends
 
 
 def run_inference(
@@ -126,13 +101,13 @@ def run_inference(
     batch_imgs = [
         cv2.resize(
             img[crop_y_s[i]:crop_y_e[i], crop_x_s[i]:crop_x_e[i]],
-            (patch_size, patch_size), interpolation=cv2.INTER_AREA
+            (patch_size, patch_size), interpolation=cv2.INTER_NEAREST
         ) for i in range(num_patches)
     ]
     batch_depths = [
         cv2.resize(
             depth[crop_y_s[i]:crop_y_e[i], crop_x_s[i]:crop_x_e[i]],
-            (patch_size, patch_size), interpolation=cv2.INTER_AREA
+            (patch_size, patch_size), interpolation=cv2.INTER_NEAREST
         ) for i in range(num_patches)
     ]
 
@@ -197,7 +172,6 @@ def run_inference(
                     # Filter IDs that meet the threshold
                     valid_sp_ids = sp_ids[counts >= threshold]
 
-                    # Update Mask (Vectorized using np.isin)
                     # Set mask pixels to mask_val where label is in valid_sp_ids
                     if valid_sp_ids.size > 0:
                         mask_update_locs = np.isin(labels, valid_sp_ids)
