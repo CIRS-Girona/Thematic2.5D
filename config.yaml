@@ -1,40 +1,42 @@
-compute_metrics:
-  enabled: true
-create_dataset:
-  angles:
-  - 0
-  - 90
-  - 180
-  - 270
-  bg_per_img: 100
-  enabled: false
-  invalid_threshold: 0.01
-  uxo_sample_rate: 0.0001
-  uxo_threshold: 0.4
-directories:
-  dataset_dir: tests/data/dataset
-  features_dir: tests/data/features
-  input_dir: tests/samples
-  logging_dir: tests/data/logs
-  models_dir: tests/data/models
-  results_dir: tests/data/results
-evaluate_results:
-  enabled: true
-  mask_path: tests/samples/18mm/masks
 max_uxo_code: 8
-patch_size: 128
-run_inference:
-  compactness: 10
-  depth_path: tests/samples/18mm/depths
-  enabled: false
-  image_path: tests/samples/18mm/images
-  num_components: 600
-  subdivide_axis: 3
-  threshold: 4
-thread_count: 1
+thread_count: 1                         # Number of threads to use for parallel processing.
+window_size: 400                        # Size (in pixels) of the square window extracted from the original image around a sample point.
+patch_size: 128                         # Size (in pixels) to which the extracted window is resized to create the final patch.
+
+directories:
+  input_dir: tests/samples              # Directory containing the input tiled data (images, depths, masks).
+  dataset_dir: tests/data/dataset       # Directory where the processed dataset patches will be saved.
+  results_dir: tests/data/results       # Directory to save classification reports and inference output images.
+  models_dir: tests/data/models         # Directory to save trained model files.
+  features_dir: tests/data/features     # Directory to save extracted features.
+  logging_dir: tests/data/logs          # Directory to save logging information.
+
+create_dataset:
+  enabled: true                         # Set to `true` to enable dataset creation.
+  bg_per_img: 100                       # Maximum number of background patches to extract per input image.
+  uxo_sample_rate: 0.0001               # Fraction of UXO pixels to sample as centers for potential UXO patches.
+  uxo_threshold: 0.4                    # Minimum fraction of UXO pixels required within a window for it to be labeled as a UXO patch.
+  invalid_threshold: 0.01               # Maximum fraction of invalid pixels (e.g., masked out areas) in a patch; patches exceeding this are skipped.
+  angles: [0, 90, 180, 270]             # Angles (in degrees) to rotate UXO patches for data augmentation.
+
 train_models:
-  enabled: false
-  n_components: 500
-  subset_size: 0
-  test_size: 0.1
-window_size: 400
+  enabled: true                         # Set to `true` to enable model training.
+  test_size: 0.1                        # Fraction of the data to use for the test set.
+  n_components: 500                     # Number of components for Nystroem kernel approximation.
+  subset_size: 0                        # If > 0, uses a random subset of this size for feature extraction/training (useful for quick tests).
+
+compute_metrics:
+  enabled: true                         # Set to `true` to enable computation of classification metrics.
+
+run_inference:
+  enabled: true                         # Set to `true` to enable inference.
+  image_path: tests/samples/18mm/images # Path to the input image directory for inference.
+  depth_path: tests/samples/18mm/depths # Path to the input depth map directory for inference.
+  num_components: 600                   # Number of superpixels to generate using SLIC for inference.
+  compactness: 10                       # How compact the superpixels are; higher values make them more square.
+  subdivide_axis: 3                     # Number of subdivisions along each axis around a superpixel centroid. Used for neighbor polling.
+  threshold: 4                          # Minimum number of positive predictions within a superpixel region required to classify the region as UXO.
+
+evaluate_results:
+  enabled: true                        # Set to `true` to evaluate inference results using mean IoU.
+  mask_path: tests/samples/18mm/masks  # Path to the input masks directory.
