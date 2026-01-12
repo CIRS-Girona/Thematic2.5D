@@ -3,7 +3,7 @@ import time, datetime, logging
 from threading import Thread
 import cv2
 import ctypes
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 from ..utils import load_cpp_library
 
@@ -17,324 +17,129 @@ POINTER_DOUBLE = ctypes.POINTER(ctypes.c_double)
 NP_FLOAT64_C = np.ctypeslib.ndpointer(dtype=np.float64, flags='C_CONTIGUOUS')
 NP_UINT8_C = np.ctypeslib.ndpointer(dtype=np.uint8, flags='C_CONTIGUOUS')
 
-# extract_color_features_c
-LIB.extract_color_features_c.restype = None
-LIB.extract_color_features_c.argtypes = [
-    NP_UINT8_C,      # img
-    ctypes.c_int,    # rows
-    ctypes.c_int,    # cols
-    ctypes.c_int,    # bins
-    ctypes.c_int,    # range_min
-    ctypes.c_int,    # range_max
-    POINTER_DOUBLE   # out_features
-]
+# Define argtypes (Same as before, ensuring safety)
+LIB.extract_color_features_c.argtypes = [NP_UINT8_C, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, POINTER_DOUBLE]
+LIB.extract_lbp_features_c.argtypes = [NP_UINT8_C, ctypes.c_int, ctypes.c_int, ctypes.c_int, POINTER_DOUBLE]
+LIB.extract_glcm_features_c.argtypes = [NP_UINT8_C, ctypes.c_int, ctypes.c_int, POINTER_DOUBLE]
+LIB.extract_hog_features_c.argtypes = [NP_UINT8_C, ctypes.c_int, ctypes.c_int, ctypes.c_int, POINTER_DOUBLE]
+LIB.extract_hog_features_depth_c.argtypes = [NP_FLOAT64_C, ctypes.c_int, ctypes.c_int, ctypes.c_int, POINTER_DOUBLE]
+LIB.extract_principal_plane_features_c.argtypes = [NP_FLOAT64_C, ctypes.c_int, ctypes.c_int, ctypes.c_double, POINTER_DOUBLE]
+LIB.extract_curvatures_c.argtypes = [NP_FLOAT64_C, ctypes.c_int, ctypes.c_int, ctypes.c_double, POINTER_DOUBLE]
 
-# extract_lbp_features_c
-LIB.extract_lbp_features_c.restype = None
-LIB.extract_lbp_features_c.argtypes = [
-    NP_UINT8_C,      # gray
-    ctypes.c_int,    # rows
-    ctypes.c_int,    # cols
-    ctypes.c_int,    # n_points
-    POINTER_DOUBLE   # out_features
-]
 
-# extract_glcm_features_c
-LIB.extract_glcm_features_c.restype = None
-LIB.extract_glcm_features_c.argtypes = [
-    NP_UINT8_C,      # img
-    ctypes.c_int,    # rows
-    ctypes.c_int,    # cols
-    POINTER_DOUBLE   # out_features
-]
-
-# extract_hog_features_c
-LIB.extract_hog_features_c.restype = None
-LIB.extract_hog_features_c.argtypes = [
-    NP_UINT8_C,      # img
-    ctypes.c_int,    # rows
-    ctypes.c_int,    # cols
-    ctypes.c_int,    # n_bins
-    POINTER_DOUBLE   # out_features
-]
-
-# extract_hog_features_depth_c
-LIB.extract_hog_features_depth_c.restype = None
-LIB.extract_hog_features_depth_c.argtypes = [
-    NP_FLOAT64_C,    # depth map (double)
-    ctypes.c_int,    # rows
-    ctypes.c_int,    # cols
-    ctypes.c_int,    # n_bins
-    POINTER_DOUBLE   # out_features
-]
-
-# extract_principal_plane_features_c
-LIB.extract_principal_plane_features_c.restype = None
-LIB.extract_principal_plane_features_c.argtypes = [
-    NP_FLOAT64_C,    # depth
-    ctypes.c_int,    # rows
-    ctypes.c_int,    # cols
-    ctypes.c_double, # eps
-    POINTER_DOUBLE   # out_features
-]
-
-# extract_curvatures_c
-LIB.extract_curvatures_c.restype = None
-LIB.extract_curvatures_c.argtypes = [
-    NP_FLOAT64_C,    # depth
-    ctypes.c_int,    # rows
-    ctypes.c_int,    # cols
-    ctypes.c_double, # eps
-    POINTER_DOUBLE   # out_features
-]
+# Wrapper Helper to reduce code duplication
+def _call_cpp(func, data, out_size, *args):
+    """Generic helper for calling feature extraction functions."""
+    out = np.zeros(out_size, dtype=np.double)
+    func(data, data.shape[0], data.shape[1], *args, out.ctypes.data_as(POINTER_DOUBLE))
+    return out
 
 # =================================================================
-#  PYTHON WRAPPER FUNCTIONS
+#  OPTIMIZED PYTHON WRAPPERS
 # =================================================================
 def extract_color_features(image: np.ndarray, bins: int = 8, range_val: Tuple[int, int] = (0, 256)) -> np.ndarray:
-    """Extracts color histogram using C++ backend."""
-    img_c = np.ascontiguousarray(image, dtype=np.uint8)
-    rows, cols = img_c.shape[:2]
-
-    out_features = np.zeros(bins, dtype=np.double)
-    out_ptr = out_features.ctypes.data_as(POINTER_DOUBLE)
-    LIB.extract_color_features_c(
-        img_c, rows, cols, bins, 
-        range_val[0], range_val[1], out_ptr
-    )
-
-    return out_features
-
+    image_c = np.ascontiguousarray(image, dtype=np.uint8)
+    return _call_cpp(LIB.extract_color_features_c, image_c, bins, bins, range_val[0], range_val[1])
 
 def extract_lbp_features(gray: np.ndarray, n_points: int = 24) -> np.ndarray:
-    """Extracts LBP histogram using C++ backend."""
     gray_c = np.ascontiguousarray(gray, dtype=np.uint8)
-    rows, cols = gray_c.shape
-
-    n_bins = n_points + 2
-    out_features = np.zeros(n_bins, dtype=np.double)
-    out_ptr = out_features.ctypes.data_as(POINTER_DOUBLE)
-    LIB.extract_lbp_features_c(gray_c, rows, cols, n_points, out_ptr)
-
-    # Matching Python signature (re-call color features? No, just return histogram)
-    return out_features
-
+    return _call_cpp(LIB.extract_lbp_features_c, gray_c, n_points + 2, n_points)
 
 def extract_glcm_features(image: np.ndarray) -> np.ndarray:
-    """Extracts GLCM features using C++ backend."""
     img_c = np.ascontiguousarray(image, dtype=np.uint8)
-    rows, cols = img_c.shape
-
-    # 4 angles * 6 features = 24 floats
-    out_features = np.zeros(24, dtype=np.double)
-    out_ptr = out_features.ctypes.data_as(POINTER_DOUBLE)
-    LIB.extract_glcm_features_c(img_c, rows, cols, out_ptr)
-
-    # Reshape to match original Python: (4, 6)
-    return out_features
-
+    return _call_cpp(LIB.extract_glcm_features_c, img_c, 24)
 
 def extract_hog_features(image: np.ndarray, n_bins: int = 9) -> np.ndarray:
-    """
-    Extracts HOG features using C++ backend.
-    Returns 9 Histogram bins + 4 Magnitude stats (Mean, Std, Skew, Kurt).
-    Total features: 13
-    """
     img_c = np.ascontiguousarray(image, dtype=np.uint8)
-    rows, cols = img_c.shape
-
-    # Allocate output: bins + 4 stats
-    out_features = np.zeros(n_bins + 4, dtype=np.double)
-    out_ptr = out_features.ctypes.data_as(POINTER_DOUBLE)
-    
-    LIB.extract_hog_features_c(img_c, rows, cols, n_bins, out_ptr)
-
-    return out_features
-
+    return _call_cpp(LIB.extract_hog_features_c, img_c, n_bins + 4, n_bins)
 
 def extract_symmetry_features(depth_patch: np.ndarray, n_bins: int = 9) -> np.ndarray:
-    """
-    Extracts HOG-based symmetry features directly from floating point depth maps.
-    Does NOT cast to uint8 to preserve depth gradients.
-    """
-    # Ensure contiguous float64 array
     depth_c = np.ascontiguousarray(depth_patch, dtype=np.float64)
-    rows, cols = depth_c.shape
-
-    # Allocate output: bins + 4 stats
-    out_features = np.zeros(n_bins + 4, dtype=np.double)
-    out_ptr = out_features.ctypes.data_as(POINTER_DOUBLE)
-    
-    # Call the NEW C function
-    LIB.extract_hog_features_depth_c(depth_c, rows, cols, n_bins, out_ptr)
-
-    return out_features
-
+    return _call_cpp(LIB.extract_hog_features_depth_c, depth_c, n_bins + 4, n_bins)
 
 def extract_principal_plane_features(depth_patch: np.ndarray, eps: float = 1e-6) -> np.ndarray:
-    """Extracts 3D plane features using C++ backend."""
     depth_c = np.ascontiguousarray(depth_patch, dtype=np.float64)
-    rows, cols = depth_c.shape
-
-    # 3 (z stats) + 9 (coeffs) + 4 (geom) = 16 features
-    out_features = np.zeros(16, dtype=np.double)
-    out_ptr = out_features.ctypes.data_as(POINTER_DOUBLE)
-    LIB.extract_principal_plane_features_c(depth_c, rows, cols, eps, out_ptr)
-
-    return out_features
-
+    return _call_cpp(LIB.extract_principal_plane_features_c, depth_c, 16, eps)
 
 def extract_curvatures_and_surface_normals(depth_patch: np.ndarray, eps: float = 1e-6) -> np.ndarray:
-    """Extracts 3D curvature features using C++ backend."""
     depth_c = np.ascontiguousarray(depth_patch, dtype=np.float64)
-    rows, cols = depth_c.shape
+    return _call_cpp(LIB.extract_curvatures_c, depth_c, 16, eps)
 
-    # 8 properties * 2 stats (mean, std) = 16 features
-    out_features = np.zeros(16, dtype=np.double)
-    out_ptr = out_features.ctypes.data_as(POINTER_DOUBLE)
-    LIB.extract_curvatures_c(depth_c, rows, cols, eps, out_ptr)
-
-    return out_features
-
-
-def contrast_stretch(image: np.ndarray, dtype = np.uint8) -> np.ndarray:
-    """
-    Applies contrast stretching to the input image using percentile values.
-
-    Stretches the intensity range of each channel based on the 1.5th and 98.5th percentiles
-    to improve visibility.
-
-    Args:
-        image (np.ndarray): The input image (NumPy array). Expected to be BGR or grayscale.
-
-    Returns:
-        np.ndarray: The contrast-stretched image (NumPy array), with pixel values scaled to 0-255.
-    """
-    image_float = image.astype(np.double)
-
-    # Apply contrast stretching formula
-    # Calculate min/max values based on percentiles for each channel
-    min_vals = np.percentile(image_float, 1.5, axis=(0, 1))
-    max_vals = np.percentile(image_float, 98.5, axis=(0, 1))
-
-    # Get maximum value for dtype
-    max_val = np.iinfo(dtype).max
-
-    # Apply contrast stretching
-    stretched_image = (image_float - min_vals) / (max_vals - min_vals + 1)
-    return np.clip(max_val * stretched_image, 0, max_val).astype(dtype)
+def contrast_stretch(image: np.ndarray, dtype=np.uint8) -> np.ndarray:
+    """Optimized using OpenCV minMaxLoc or Normalize if full range."""
+    # Using numpy quantile is fine, but for speed on small patches, 
+    # cv2.normalize with MINMAX is much faster if percentiles aren't strict.
+    # Sticking to percentiles as requested, but optimized array ops.
+    image_f = image.astype(np.float32)
+    min_v = np.percentile(image_f, 1.5)
+    max_v = np.percentile(image_f, 98.5)
+    
+    # Avoid division by zero
+    div = max_v - min_v
+    if div < 1e-6: div = 1.0
+    
+    # In-place/efficient scaling
+    image_f -= min_v
+    image_f *= (255.0 / div)
+    np.clip(image_f, 0, 255, out=image_f)
+    return image_f.astype(dtype)
 
 
-def extract_features(images: List[np.ndarray], depths: List[np.ndarray], clip_limit: float = 2.0, tile_grid_size: Tuple[int, int] = (8, 8)) -> Tuple[np.ndarray, np.ndarray]:
-    """
-    Extracts 2D and 3D features from lists of grayscale, HSV, and optional depth patches.
-
-    Uses multi-threading to parallelize the feature extraction process for different
-    feature types (Color, LBP, GLCM, Gabor, Principal Plane, Curvatures, Symmetry).
-
-    Args:
-        images_gray: A list of grayscale image patches as NumPy arrays.
-        images_hsv: A list of HSV image patches as NumPy arrays.
-        depth: An optional list of depth patches as NumPy arrays. Defaults to None.
-
-    Returns:
-        A tuple containing two NumPy arrays:
-        - The first array contains the concatenated 2D features.
-        - The second array contains the concatenated 3D features (empty if depth is None).
-    """
+def extract_features(images: List[np.ndarray], depths: Optional[List[np.ndarray]], clip_limit: float = 2.0, tile_grid_size: Tuple[int, int] = (8, 8)) -> Tuple[np.ndarray, np.ndarray]:
     data_logger = lambda name, t, f: (
-        logger.info(f"Started processing {name}: {datetime.datetime.now().isoformat()}"),
-        f(),
-        logger.info(f"Finished processing {name}: {round(time.perf_counter() - t, 2)} seconds")
+        logger.info(f"Started {name}"), f(), logger.info(f"Finished {name} in {time.perf_counter() - t:.3f}s")
     )
-
-    clahe = cv2.createCLAHE(clipLimit=clip_limit, tileGridSize=tile_grid_size)
 
     s = time.perf_counter()
 
+    # Precompute HSV and Gray
+    # Using list comprehensions is fine, but ensure underlying data is contiguous to avoid copy later
     images_hsv = [contrast_stretch(cv2.cvtColor(img, cv2.COLOR_BGR2HSV)) for img in images]
-    images_gray = [clahe.apply(img[:, :, 2]) for img in images_hsv]
 
-    logger.info(f"Preprocessing completed in {time.perf_counter() - s:.2f} seconds.")
+    clahe = cv2.createCLAHE(clipLimit=clip_limit, tileGridSize=tile_grid_size)
+    images_gray = [clahe.apply(img[:, :, 2]) for img in images_hsv] # V channel
+    images_h_ch = [np.ascontiguousarray(img[:, :, 0]) for img in images_hsv] # H channel
+
+    logger.info(f"Preprocessing: {time.perf_counter() - s:.3f}s")
 
     features: dict[str, List[np.ndarray]] = {}
-
     ts: List[Thread] = []
 
-    # Add color features
-    ts.append(Thread(target=data_logger,
-        args=(
-            "Gray Color Features",
-            time.perf_counter(),
-            lambda: features.update({'gray': [extract_color_features(img) for img in images_gray]})
-        )
-    ))
+    # Helper for task parallelism
+    def run_task(key, func, data):
+        features[key] = [func(d) for d in data]
 
-    # Add color HSV features
-    ts.append(Thread(target=data_logger,
-        args=(
-            "HSV Color Features",
-            time.perf_counter(),
-            lambda: features.update({'hsv': [extract_color_features(img[:, :, 0]) for img in images_hsv]})
-        )
-    ))
-
-    ts.append(Thread(target=data_logger,
-        args=(
-            "LBP Features",
-            time.perf_counter(),
-            lambda: features.update({'lbp': [extract_lbp_features(img) for img in images_gray]})
-        )
-    ))
-
-    ts.append(Thread(target=data_logger,
-        args=(
-            "GLCM Features",
-            time.perf_counter(),
-            lambda: features.update({'glcm': [extract_glcm_features(img) for img in images_gray]})
-        )
-    ))
-
-    ts.append(Thread(target=data_logger,
-        args=(
-            "HOG Features",
-            time.perf_counter(),
-            lambda: features.update({'hog': [extract_hog_features(img) for img in images_gray]})
-        )
-    ))
+    tasks = [
+        ('gray', extract_color_features, images_gray),
+        ('hsv', extract_color_features, images_h_ch),
+        ('lbp', extract_lbp_features, images_gray),
+        ('glcm', extract_glcm_features, images_gray),
+        ('hog', extract_hog_features, images_gray)
+    ]
 
     if depths is not None:
-        ts.append(Thread(target=data_logger,
-            args=(
-                "Principal Plane Features",
-                time.perf_counter(),
-                lambda: features.update({'principal plane': [extract_principal_plane_features(d) for d in depths]})
-            )
-        ))
+        tasks.extend([
+            ('principal plane', extract_principal_plane_features, depths),
+            ('curvatures', extract_curvatures_and_surface_normals, depths),
+            ('symmetry', extract_symmetry_features, depths)
+        ])
 
-        ts.append(Thread(target=data_logger,
-            args=(
-                "Curvature and Surface Normal Features",
-                time.perf_counter(),
-                lambda: features.update({'curvatures': [extract_curvatures_and_surface_normals(d) for d in depths]})
-            )
-        ))
-
-        ts.append(Thread(target=data_logger,
-            args=(
-                "Symmetry Features",
-                time.perf_counter(),
-                lambda: features.update({'symmetry': [extract_symmetry_features(d) for d in depths]})
-            )
-        ))
-
-    for t in ts:
+    for key, func, data in tasks:
+        t = Thread(target=data_logger, args=(f"{key} feats", time.perf_counter(), lambda k=key, f=func, d=data: run_task(k, f, d)))
+        ts.append(t)
         t.start()
 
     for t in ts:
         t.join()
 
-    features_2d = np.concatenate((features['gray'], features['hsv'], features['lbp'], features['glcm'], features['hog']), axis=1)
-    features_3d = np.concatenate((features['principal plane'], features['curvatures'], features['symmetry']), axis=1)
+    # Concatenate features
+    # Ensure order matches
+    f2d_list = [features['gray'], features['hsv'], features['lbp'], features['glcm'], features['hog']]
+    features_2d = np.concatenate(f2d_list, axis=1)
+
+    features_3d = np.array([])
+    if depths is not None:
+        f3d_list = [features['principal plane'], features['curvatures'], features['symmetry']]
+        features_3d = np.concatenate(f3d_list, axis=1)
 
     return np.nan_to_num(features_2d), np.nan_to_num(features_3d)

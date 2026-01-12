@@ -25,8 +25,8 @@ pip install .
 
 # Compile C++ bindings
 cd ../../src/cpp/
-g++ -O3 -shared -fPIC -o libfastmetrics.so image_metrics.cpp
-g++ -O3 -shared -fPIC -o libfastfeatures.so feature_extraction.cpp
+g++ -O3 -fopenmp -shared -fPIC -o libfastmetrics.so image_metrics.cpp
+g++ -O3 -fopenmp -shared -fPIC -o libfastfeatures.so feature_extraction.cpp
 mv *.so ../../deps/
 
 cd ../../
