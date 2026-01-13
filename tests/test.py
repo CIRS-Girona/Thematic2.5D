@@ -6,11 +6,13 @@ SAMPLES = ('18mm', '24mm', 'GPS')
 
 # Define directory paths relative to the TEST_DIR
 TEST_DIR = "tests"
-SAMPLE_DIR = f"{TEST_DIR}/samples"
+INPUT_DIR = f"{TEST_DIR}/samples"
+INFERENCE_DIR = INPUT_DIR
 DATASET_DIR = f"{TEST_DIR}/data/dataset"
 FEATURES_DIR = f"{TEST_DIR}/data/features"
 MODELS_DIR = f"{TEST_DIR}/data/models"
 RESULTS_DIR = f"{TEST_DIR}/data/results"
+LOGGING_DIR = f"{TEST_DIR}/data/logs"
 
 
 def run_pipeline(conf: dict) -> None:
@@ -64,15 +66,21 @@ if __name__ == "__main__":
         f.seek(0)
         config = yaml.safe_load(f)
 
-    # Enable steps for dataset creation and model training
+    config['directories']['input_dir'] = INPUT_DIR
+    config['directories']['inference_dir'] = INFERENCE_DIR
+    config['directories']['dataset_dir'] = DATASET_DIR
+    config['directories']['results_dir'] = RESULTS_DIR
+    config['directories']['models_dir'] = MODELS_DIR
+    config['directories']['features_dir'] = FEATURES_DIR
+    config['directories']['logging_dir'] = LOGGING_DIR
+
     config['create_dataset']['enabled'] = True
     config['train_models']['enabled'] = True
-    # Disable metric computation, inference, and evaluation for this initial run
-    config['compute_metrics']['enabled'] = False
-    config['run_inference']['enabled'] = False
-    config['evaluate_results']['enabled'] = False
+    config['run_inference']['enabled'] = True
+    config['evaluate_results']['compute_metrics'] = True
+    config['evaluate_results']['compute_miou'] = True
 
-    print("--- Running initial pipeline: Create Dataset, Extract Features, Train SVMs ---")
+    print("--- Running pipeline ---")
     run_pipeline(config)
 
     # Verify that the expected data directories and files were created and are not empty
@@ -82,26 +90,6 @@ if __name__ == "__main__":
     data_check(MODELS_DIR, check_dir=True, check_empty=True)    # Check for saved model
     data_check(RESULTS_DIR, check_dir=True)                     # Results dir might be empty/have logs
 
-    # Disable dataset creation and model training
-    config['create_dataset']['enabled'] = False
-    config['train_models']['enabled'] = False
-
-    # Enable inference and evaluation for the loop
-    config['compute_metrics']['enabled'] = True
-    config['run_inference']['enabled'] = True
-    config['evaluate_results']['enabled'] = True
-
-    # Iterate through all defined sample sets
-    for sample in SAMPLES:
-        # Configure the input paths for the current sample
-        config['run_inference']['image_path'] = f"{SAMPLE_DIR}/{sample}/images"
-        config['run_inference']['depth_path'] = f"{SAMPLE_DIR}/{sample}/depths"
-
-        # Configure the ground truth path for evaluation
-        config['evaluate_results']['mask_path'] = f"{SAMPLE_DIR}/{sample}/masks"
-
-        run_pipeline(config)
-
     # Verify that performance metrics and per-sample results were generated
     for model in MODELS:
         for binary in (True, False):
@@ -109,11 +97,14 @@ if __name__ == "__main__":
 
             data_check(f"{RESULTS_DIR}/{file_name}.jpg")
             data_check(f"{RESULTS_DIR}/{file_name}.txt")
-            data_check(f"{RESULTS_DIR}/{file_name}-mIoU.txt")
-            data_check(f"{RESULTS_DIR}/{file_name}", check_dir=True, check_empty=True)
+
+            for dtset in SAMPLES:
+                data_check(f"{RESULTS_DIR}/{dtset}", check_dir=True, check_empty=True)
+                data_check(f"{RESULTS_DIR}/{dtset}/{file_name}-mIoU.txt")
+                data_check(f"{RESULTS_DIR}/{dtset}/{file_name}", check_dir=True, check_empty=True)
 
     for sample in SAMPLES:
-        data_check(f"{SAMPLE_DIR}/{sample}/metrics.csv")
+        data_check(f"{INPUT_DIR}/{sample}/metrics.csv")
 
     # Restore the original configuration file
     with open("config.yaml", 'w') as f:

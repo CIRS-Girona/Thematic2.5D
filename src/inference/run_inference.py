@@ -1,7 +1,6 @@
 import numpy as np
 import cv2
 import os, time, logging
-from typing import Tuple
 
 from ..features import extract_features
 from ..utils import superpixel_segmentation, apply_mask, get_window_bounds

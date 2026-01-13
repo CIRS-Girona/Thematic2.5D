@@ -35,7 +35,7 @@ FIELDS: Tuple[str] = [
 ]
 
 
-def calculate_and_save_metrics(
+def calculate_metrics(
     sensor: Sensor,
     models_dir: str,
     imgs_path: List[str],

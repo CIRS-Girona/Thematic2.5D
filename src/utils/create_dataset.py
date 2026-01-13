@@ -130,13 +130,12 @@ def process_image_data(
 
 
 def create_dataset(
-    images_path: str,
-    depths_path: str,
-    masks_path: str,
+    image_path: str,
+    depth_path: str,
+    mask_path: str,
     dataset_dir: str,
     prefix: str = '',
     bg_per_img: int = 20_000,
-    thread_count: int = 16,
     uxo_sample_rate: float = 0.01,
     uxo_threshold: float = 0.4,
     invalid_threshold: float = 0.01,
@@ -150,9 +149,9 @@ def create_dataset(
     Uses multithreading to process images in parallel.
 
     Args:
-        images_path (str): Path to the directory containing input images.
-        depths_path (str): Path to the directory containing input depth maps.
-        masks_path (str): Path to the directory containing segmentation masks.
+        image_path (str): Path to the input image.
+        depth_path (str): Path to the input depth map.
+        mask_path (str): Path to the input segmentation mask.
         dataset_dir (str): The base directory where the created dataset will be saved.
         prefix (str): A prefix to add to the filenames within the dataset directory.
         bg_per_img (int): The number of background patches to sample per image.
@@ -169,67 +168,57 @@ def create_dataset(
         angles (Tuple[int]): A tuple of angles (in degrees) for rotating UXO patches
                              to create augmented samples.
     """
-    def _create_dataset(label: str) -> None:
-        # Load Data
-        img_path = os.path.join(images_path, f"{label}.jpg")
-        if not os.path.exists(img_path): img_path = os.path.join(images_path, f"{label}.png")
-        if not os.path.exists(img_path): return
+    label = '.'.join(image_path.split('/')[-1].split('.')[:-1])
 
-        image = cv2.imread(img_path, cv2.IMREAD_UNCHANGED)
-        depth = cv2.imread(os.path.join(depths_path, f"{label}.png"), cv2.IMREAD_UNCHANGED)
-        mask_raw = cv2.imread(os.path.join(masks_path, f"{label}.png"), cv2.IMREAD_UNCHANGED)
+    # Load data
+    image = cv2.imread(image_path, cv2.IMREAD_UNCHANGED)
+    depth = cv2.imread(depth_path, cv2.IMREAD_UNCHANGED)
+    mask_raw = cv2.imread(mask_path, cv2.IMREAD_UNCHANGED)
 
-        if image is None or depth is None or mask_raw is None: return
+    if image is None or depth is None or mask_raw is None: return
 
-        h, w = depth.shape
+    h, w = depth.shape
 
-        # Convert to float for NaN support.
-        mask = mask_raw.astype(np.float32)
+    # Convert to float for NaN support.
+    mask = mask_raw.astype(np.float32)
 
-        # Identify Invalid Pixels (Invalid Code or 0-Depth) and UXO Pixels
-        is_invalid = (mask_raw[:, :, 0] == 0) | (depth == 0)
-        is_uxo = (mask_raw[:, :, 0] == 2) & (~is_invalid)
-        is_bg = (mask_raw[:, :, 0] == 1) & (~is_invalid)
+    # Identify Invalid Pixels (Invalid Code or 0-Depth) and UXO Pixels
+    is_invalid = (mask_raw[:, :, 0] == 0) | (depth == 0)
+    is_uxo = (mask_raw[:, :, 0] == 2) & (~is_invalid)
+    is_bg = (mask_raw[:, :, 0] == 1) & (~is_invalid)
 
-        # We need specific locations, so finding them all is necessary.
-        uxo_ys, uxo_xs = np.where(is_uxo)
-        total_uxos = len(uxo_ys)
-        if total_uxos > 0:
-            sample_size = int(total_uxos * uxo_sample_rate)
-            # Use random choice on indices, simpler than zipping and sampling
-            if sample_size > 0:
-                idx = np.random.choice(total_uxos, sample_size, replace=False)
-                process_image_data(
-                    image, depth, mask[:, :, 1], (uxo_ys[idx], uxo_xs[idx]),
-                    dataset_dir, f"{label}-{prefix}", uxo_threshold, invalid_threshold,
-                    window_size, patch_size, angles, is_uxo_batch=True
-                )
-
-        # Generate 20% more than needed to account for invalid hits
-        attempt_count = int(bg_per_img * 1.2) 
-        rand_y = np.random.randint(0, h, attempt_count)
-        rand_x = np.random.randint(0, w, attempt_count)
-
-        # Filter the coordinates
-        valid_bg_indices = is_bg[rand_y, rand_x]
-        bg_y = rand_y[valid_bg_indices]
-        bg_x = rand_x[valid_bg_indices]
-
-        # Trim to exact number required
-        if len(bg_y) > bg_per_img:
-            bg_y = bg_y[:bg_per_img]
-            bg_x = bg_x[:bg_per_img]
-
-        if len(bg_y) > 0:
+    # We need specific locations, so finding them all is necessary.
+    uxo_ys, uxo_xs = np.where(is_uxo)
+    total_uxos = len(uxo_ys)
+    if total_uxos > 0:
+        sample_size = int(total_uxos * uxo_sample_rate)
+        # Use random choice on indices, simpler than zipping and sampling
+        if sample_size > 0:
+            idx = np.random.choice(total_uxos, sample_size, replace=False)
             process_image_data(
-                image, depth, mask[:, :, 1], (bg_y, bg_x),
+                image, depth, mask[:, :, 1], (uxo_ys[idx], uxo_xs[idx]),
                 dataset_dir, f"{label}-{prefix}", uxo_threshold, invalid_threshold,
-                window_size, patch_size, angles, is_uxo_batch=False
+                window_size, patch_size, angles, is_uxo_batch=True
             )
 
-    # Main Execution
-    mask_files = os.listdir(masks_path)
-    labels = ['.'.join(f.split('.')[:-1]) for f in mask_files if f.endswith(('.png',))]
+    # Generate 20% more than needed to account for invalid hits
+    attempt_count = int(bg_per_img * 1.2) 
+    rand_y = np.random.randint(0, h, attempt_count)
+    rand_x = np.random.randint(0, w, attempt_count)
 
-    with ThreadPoolExecutor(max_workers=thread_count) as exe:
-        list(tqdm(exe.map(_create_dataset, labels), total=len(labels)))
+    # Filter the coordinates
+    valid_bg_indices = is_bg[rand_y, rand_x]
+    bg_y = rand_y[valid_bg_indices]
+    bg_x = rand_x[valid_bg_indices]
+
+    # Trim to exact number required
+    if len(bg_y) > bg_per_img:
+        bg_y = bg_y[:bg_per_img]
+        bg_x = bg_x[:bg_per_img]
+
+    if len(bg_y) > 0:
+        process_image_data(
+            image, depth, mask[:, :, 1], (bg_y, bg_x),
+            dataset_dir, f"{label}-{prefix}", uxo_threshold, invalid_threshold,
+            window_size, patch_size, angles, is_uxo_batch=False
+        )

@@ -5,10 +5,11 @@ patch_size: 128                         # Size (in pixels) to which the extracte
 
 directories:
   input_dir: tests/samples              # Directory containing the input tiled data (images, depths, masks).
+  inference_dir: tests/samples          # Directory containing the input tiled data for inference (images, depths).
   dataset_dir: tests/data/dataset       # Directory where the processed dataset patches will be saved.
-  results_dir: tests/data/results       # Directory to save classification reports and inference output images.
-  models_dir: tests/data/models         # Directory to save trained model files.
   features_dir: tests/data/features     # Directory to save extracted features.
+  models_dir: tests/data/models         # Directory to save trained model files.
+  results_dir: tests/data/results       # Directory to save classification reports and inference output images.
   logging_dir: tests/data/logs          # Directory to save logging information.
 
 create_dataset:
@@ -25,18 +26,14 @@ train_models:
   n_components: 500                     # Number of components for Nystroem kernel approximation.
   subset_size: 0                        # If > 0, uses a random subset of this size for feature extraction/training (useful for quick tests).
 
-compute_metrics:
-  enabled: true                         # Set to `true` to enable computation of classification metrics.
-
 run_inference:
   enabled: true                         # Set to `true` to enable inference.
-  image_path: tests/samples/18mm/images # Path to the input image directory for inference.
-  depth_path: tests/samples/18mm/depths # Path to the input depth map directory for inference.
   num_components: 600                   # Number of superpixels to generate using SLIC for inference.
   compactness: 10                       # How compact the superpixels are; higher values make them more square.
   subdivide_axis: 3                     # Number of subdivisions along each axis around a superpixel centroid. Used for neighbor polling.
   threshold: 4                          # Minimum number of positive predictions within a superpixel region required to classify the region as UXO.
 
 evaluate_results:
-  enabled: true                        # Set to `true` to evaluate inference results using mean IoU.
-  mask_path: tests/samples/18mm/masks  # Path to the input masks directory.
+  compute_metrics: true                 # Set to `true` to enable computation of classification metrics.
+  compute_miou: true                    # Set to `true` to evaluate inference results using mean IoU.
+                                        # A `masks` directory must be present in the inference directory for mean IoU evaluation.
