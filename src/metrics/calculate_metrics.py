@@ -1,5 +1,6 @@
 import numpy as np
 import os, cv2, csv, logging
+from scipy.ndimage import label
 from typing import List, Tuple
 from time import perf_counter
 
@@ -60,65 +61,74 @@ def calculate_metrics(
         uiqm = calculate_UIQM(img)
         ucique = calculate_UCIQE(img)
 
-        uxos = {tuple(c) for c in mask[mask[:, :, 0] == 2]}  # Get unique UXO instances
-        for uxo in uxos:
-            indices = np.logical_and(np.all(mask == uxo, axis=2), depth > 0)
-            v, u = np.where(indices)
+        for uxo in np.unique(mask):
+            if uxo == 0:
+                continue
 
-            y_s, y_e = get_window_bounds(np.array((np.median(v),)), window_size // 2, depth.shape[0])
-            x_s, x_e = get_window_bounds(np.array((np.median(u),)), window_size // 2, depth.shape[1])
-
-            patch_img = cv2.resize(
-                img[y_s[0]:y_e[0], x_s[0]:x_e[0]],
-                (patch_size, patch_size), interpolation=cv2.INTER_NEAREST
-            )
-            patch_depth = cv2.resize(
-                depth[y_s[0]:y_e[0], x_s[0]:x_e[0]],
-                (patch_size, patch_size), interpolation=cv2.INTER_NEAREST
+            # A 3x3 matrix of ones represents 8-connectivity.
+            labeled_array, num_blobs = label(
+                (mask == uxo).astype(int),
+                structure=np.ones((3, 3), dtype=int)
             )
 
-            features_2d, features_3d = extract_features([patch_img], [patch_depth])
-            feats_combined = np.concatenate((features_2d, features_3d), axis=1)
+            for local_blob_id in range(1, num_blobs + 1):
+                indices = np.logical_and(labeled_array == local_blob_id, depth > 0)
+                v, u = np.where(indices)
 
-            model_results = {}
-            for model_name in model_files:
-                # Load Model
-                model = SVMModel(model_dir=models_dir)
-                model.load_model(model_name)
+                y_s, y_e = get_window_bounds(np.array((np.median(v),)), window_size // 2, depth.shape[0])
+                x_s, x_e = get_window_bounds(np.array((np.median(u),)), window_size // 2, depth.shape[1])
 
-                dimension = model.label
-                binary_mode = model.is_binary()
+                patch_img = cv2.resize(
+                    img[y_s[0]:y_e[0], x_s[0]:x_e[0]],
+                    (patch_size, patch_size), interpolation=cv2.INTER_NEAREST
+                )
+                patch_depth = cv2.resize(
+                    depth[y_s[0]:y_e[0], x_s[0]:x_e[0]],
+                    (patch_size, patch_size), interpolation=cv2.INTER_NEAREST
+                )
 
-                # Select Features
-                if dimension == '3':
-                    X = features_3d
-                elif dimension == '2':
-                    X = features_2d
-                else:
-                    X = feats_combined
+                features_2d, features_3d = extract_features([patch_img], [patch_depth])
+                feats_combined = np.concatenate((features_2d, features_3d), axis=1)
 
-                y_pred = model.predict(X)
+                model_results = {}
+                for model_name in model_files:
+                    # Load Model
+                    model = SVMModel(model_dir=models_dir)
+                    model.load_model(model_name)
 
-                if binary_mode:
-                    model_results[f"{dimension}D binary"] = int(y_pred[0] == 'uxo')
-                else:
-                    model_results[f"{dimension}D"] = int(y_pred[0] == str(uxo[1]))
+                    dimension = model.label
+                    binary_mode = model.is_binary()
 
-            data.append({
-                "label": f"{uxo[1]}_{uxo[2]}",
-                "image": ''.join(img_path.split('/')[-1].split('.')[:-1]),
-                "res. width": depth.shape[1],
-                "res. height": depth.shape[0],
-                "centroid u": np.median(u),
-                "centroid v": np.median(v),
-                "med. depth (mm)": np.median(depth[v, u]),
-                "avg. depth (mm)": np.mean(depth[v, u]),
-                "area (pixels)": u.size,
-                "ground res. (mm / pixel)": calculate_ground_resolution(sensor, u, v, depth[v, u]),
-                "camera slant (degrees)": slant,
-                "UIQM": uiqm,
-                "UCIQUE": ucique
-            } | model_results)
+                    # Select Features
+                    if dimension == '3':
+                        X = features_3d
+                    elif dimension == '2':
+                        X = features_2d
+                    else:
+                        X = feats_combined
+
+                    y_pred = model.predict(X)
+
+                    if binary_mode:
+                        model_results[f"{dimension}D binary"] = int(y_pred[0] == 'uxo')
+                    else:
+                        model_results[f"{dimension}D"] = int(y_pred[0] == str(uxo))
+
+                data.append({
+                    "label": uxo,
+                    "image": ''.join(img_path.split('/')[-1].split('.')[:-1]),
+                    "res. width": depth.shape[1],
+                    "res. height": depth.shape[0],
+                    "centroid u": np.median(u),
+                    "centroid v": np.median(v),
+                    "med. depth (mm)": np.median(depth[v, u]),
+                    "avg. depth (mm)": np.mean(depth[v, u]),
+                    "area (pixels)": u.size,
+                    "ground res. (mm / pixel)": calculate_ground_resolution(sensor, u, v, depth[v, u]),
+                    "camera slant (degrees)": slant,
+                    "UIQM": uiqm,
+                    "UCIQUE": ucique
+                } | model_results)
 
     with open(output_file, 'w') as f:
         writer = csv.DictWriter(f, FIELDS)

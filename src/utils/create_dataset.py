@@ -183,26 +183,25 @@ def create_dataset(
     mask = mask_raw.astype(np.float32)
 
     # Identify Invalid Pixels (Invalid Code or 0-Depth) and UXO Pixels
-    is_invalid = (mask_raw[:, :, 0] == 0) | (depth == 0)
-    is_uxo = (mask_raw[:, :, 0] == 2) & (~is_invalid)
-    is_bg = (mask_raw[:, :, 0] == 1) & (~is_invalid)
+    is_invalid = depth == 0
+    is_uxo = (mask_raw[:, :] > 0) & (~is_invalid)
+    is_bg = (mask_raw[:, :] == 0) & (~is_invalid)
 
     # We need specific locations, so finding them all is necessary.
     uxo_ys, uxo_xs = np.where(is_uxo)
     total_uxos = len(uxo_ys)
-    if total_uxos > 0:
-        sample_size = int(total_uxos * uxo_sample_rate)
+    sample_size = int(total_uxos * uxo_sample_rate)
+    if sample_size > 0:
         # Use random choice on indices, simpler than zipping and sampling
-        if sample_size > 0:
-            idx = np.random.choice(total_uxos, sample_size, replace=False)
-            process_image_data(
-                image, depth, mask[:, :, 1], (uxo_ys[idx], uxo_xs[idx]),
-                dataset_dir, f"{label}-{prefix}", uxo_threshold, invalid_threshold,
-                window_size, patch_size, angles, is_uxo_batch=True
-            )
+        idx = np.random.choice(total_uxos, sample_size, replace=False)
+        process_image_data(
+            image, depth, mask, (uxo_ys[idx], uxo_xs[idx]),
+            dataset_dir, f"{label}-{prefix}", uxo_threshold, invalid_threshold,
+            window_size, patch_size, angles, is_uxo_batch=True
+        )
 
     # Generate 20% more than needed to account for invalid hits
-    bg_per_img = int(total_uxos * bg_ratio)
+    bg_per_img = int(sample_size * bg_ratio)
     attempt_count = int(bg_per_img * 1.2) 
     rand_y = np.random.randint(0, h, attempt_count)
     rand_x = np.random.randint(0, w, attempt_count)
@@ -219,7 +218,7 @@ def create_dataset(
 
     if len(bg_y) > 0:
         process_image_data(
-            image, depth, mask[:, :, 1], (bg_y, bg_x),
+            image, depth, mask, (bg_y, bg_x),
             dataset_dir, f"{label}-{prefix}", uxo_threshold, invalid_threshold,
             window_size, patch_size, angles, is_uxo_batch=False
         )

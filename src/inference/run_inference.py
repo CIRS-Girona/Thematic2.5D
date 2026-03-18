@@ -128,10 +128,10 @@ def run_inference(
         for i in range(num_patches):
             m_patch = mask[crop_y_s[i]:crop_y_e[i], crop_x_s[i]:crop_x_e[i]]
 
-            is_uxo = (m_patch[:, :, 0] == 2)
+            is_uxo = m_patch > 0
             if np.sum(is_uxo) / is_uxo.size >= uxo_threshold:
                 y_true_binary.append('uxo')
-                y_true_multi.append(str(np.unique(m_patch[is_uxo][:, 0])[0]))
+                y_true_multi.append(str(np.unique(m_patch[is_uxo])[0]))
             else:
                 y_true_binary.append('background')
                 y_true_multi.append('background')

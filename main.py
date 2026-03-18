@@ -83,7 +83,7 @@ if __name__ == "__main__":
             dtset = f"{day}_{plot}_{camera}"
 
             image_path = f"{input_dir}/{day}/{plot}/{camera}/images/"
-            depth_path = f"{input_dir}/{day}/{plot}/{camera}/depths/"
+            depth_path = f"{input_dir}/{day}/{plot}/{camera}/depthmaps/"
             mask_path = f"{input_dir}/{day}/{plot}/{camera}/masks/"
 
             for img in os.listdir(depth_path):
@@ -137,7 +137,7 @@ if __name__ == "__main__":
             dtset = f"{day}_{plot}_{camera}"
 
             image_path = f"{input_dir}/{day}/{plot}/{camera}/images/"
-            depth_path = f"{input_dir}/{day}/{plot}/{camera}/depths/"
+            depth_path = f"{input_dir}/{day}/{plot}/{camera}/depthmaps/"
             mask_path = f"{input_dir}/{day}/{plot}/{camera}/masks/"
 
             os.makedirs(f"{results_dir}/{dtset}", exist_ok=True)
@@ -189,11 +189,11 @@ if __name__ == "__main__":
             dtset = f"{day}_{plot}_{camera}"
 
             image_path = f"{input_dir}/{day}/{plot}/{camera}/images/"
-            depth_path = f"{input_dir}/{day}/{plot}/{camera}/depths/"
+            depth_path = f"{input_dir}/{day}/{plot}/{camera}/depthmaps/"
             mask_path = f"{input_dir}/{day}/{plot}/{camera}/masks/"
 
             camera_file = f"{input_dir}/{day}/{plot}/{camera}/cams.xml"
-            metric_file = f"{results_dir}/{day}/{plot}/{camera}/metrics.csv"
+            metric_file = f"{results_dir}/{dtset}/metrics.csv"
 
             labels = ['.'.join(label.split('.')[:-1]) for label in os.listdir(image_path)]
 
@@ -241,7 +241,7 @@ if __name__ == "__main__":
                     miou_scores[dtset][curr_dir] = {}
 
                 for mask in os.listdir(mask_path):
-                    label = "".join(mask.split('.')[:-1])
+                    label = "".join(mask.replace(mask_suffix, "").split('.')[:-1])
 
                     if not os.path.exists(f"{results_dir}/{dtset}/{curr_dir}/{label}_mask.png"):
                         continue

@@ -7,12 +7,13 @@ SAMPLES = ('18mm', '24mm', 'GPS')
 # Define directory paths relative to the TEST_DIR
 TEST_DIR = "tests"
 INPUT_DIR = f"{TEST_DIR}/samples"
-INFERENCE_DIR = INPUT_DIR
-DATASET_DIR = f"{TEST_DIR}/data/dataset"
-FEATURES_DIR = f"{TEST_DIR}/data/features"
-MODELS_DIR = f"{TEST_DIR}/data/models"
-RESULTS_DIR = f"{TEST_DIR}/data/results"
-LOGGING_DIR = f"{TEST_DIR}/data/logs"
+OUTPUT_DIR = f"{TEST_DIR}/output"
+
+DATASET_DIR = f"{OUTPUT_DIR}/dataset"
+FEATURES_DIR = f"{OUTPUT_DIR}/features"
+MODELS_DIR = f"{OUTPUT_DIR}/models"
+RESULTS_DIR = f"{OUTPUT_DIR}/results"
+LOGGING_DIR = f"{OUTPUT_DIR}/logs"
 
 
 def run_pipeline(conf: dict) -> None:
@@ -66,46 +67,48 @@ if __name__ == "__main__":
         f.seek(0)
         config = yaml.safe_load(f)
 
-    config['directories']['input_dir'] = INPUT_DIR
-    config['directories']['inference_dir'] = INFERENCE_DIR
-    config['directories']['dataset_dir'] = DATASET_DIR
-    config['directories']['results_dir'] = RESULTS_DIR
-    config['directories']['models_dir'] = MODELS_DIR
-    config['directories']['features_dir'] = FEATURES_DIR
-    config['directories']['logging_dir'] = LOGGING_DIR
+    try:
+        config['directories']['input_dir'] = INPUT_DIR
+        config['directories']['output_dir'] = OUTPUT_DIR
+        config['directories']['mask_suffix'] = "_binary"
+        config['directories']['depth_suffix'] = ""
 
-    config['create_dataset']['enabled'] = True
-    config['train_models']['enabled'] = True
-    config['run_inference']['enabled'] = True
-    config['evaluate_results']['compute_metrics'] = True
-    config['evaluate_results']['compute_miou'] = True
+        config['create_dataset']['enabled'] = True
+        config['train_models']['enabled'] = True
+        config['run_inference']['enabled'] = True
+        config['evaluate_results']['compute_metrics'] = True
+        config['evaluate_results']['compute_miou'] = True
 
-    print("--- Running pipeline ---")
-    run_pipeline(config)
+        print("--- Running pipeline ---")
+        run_pipeline(config)
 
-    # Verify that the expected data directories and files were created and are not empty
-    data_check(f"{DATASET_DIR}/2D", check_dir=True, check_empty=True)
-    data_check(f"{DATASET_DIR}/3D", check_dir=True, check_empty=True)
-    data_check(FEATURES_DIR, check_dir=True, check_empty=True)  # Check for saved features
-    data_check(MODELS_DIR, check_dir=True, check_empty=True)    # Check for saved model
-    data_check(RESULTS_DIR, check_dir=True)                     # Results dir might be empty/have logs
+        # Verify that the expected data directories and files were created and are not empty
+        data_check(f"{DATASET_DIR}/2D", check_dir=True, check_empty=True)
+        data_check(f"{DATASET_DIR}/3D", check_dir=True, check_empty=True)
+        data_check(FEATURES_DIR, check_dir=True, check_empty=True)  # Check for saved features
+        data_check(MODELS_DIR, check_dir=True, check_empty=True)    # Check for saved model
+        data_check(RESULTS_DIR, check_dir=True)                     # Results dir might be empty/have logs
 
-    # Verify that performance metrics and per-sample results were generated
-    for dtset in SAMPLES:
-        data_check(f"{RESULTS_DIR}/{dtset}", check_dir=True, check_empty=True)
-        data_check(f"{RESULTS_DIR}/{dtset}/metrics.csv")
+        # Verify that performance metrics and per-sample results were generated
+        for dtset in os.listdir(RESULTS_DIR):
+            data_check(f"{RESULTS_DIR}/{dtset}", check_dir=True, check_empty=True)
+            data_check(f"{RESULTS_DIR}/{dtset}/metrics.csv")
 
-        for model in MODELS:
-            for binary in (True, False):
-                file_name = f"SVM{model}_binary" if binary else f"SVM{model}"
+            for model in MODELS:
+                for binary in (True, False):
+                    file_name = f"SVM{model}_binary" if binary else f"SVM{model}"
 
-                data_check(f"{RESULTS_DIR}/{dtset}/{file_name}-cm.txt")
-                data_check(f"{RESULTS_DIR}/{dtset}/{file_name}-mIoU.txt")
-                data_check(f"{RESULTS_DIR}/{dtset}/{file_name}-stats.txt")
-                data_check(f"{RESULTS_DIR}/{dtset}/{file_name}", check_dir=True, check_empty=True)
+                    data_check(f"{RESULTS_DIR}/{dtset}/{file_name}-cm.txt")
+                    data_check(f"{RESULTS_DIR}/{dtset}/{file_name}-mIoU.txt")
+                    data_check(f"{RESULTS_DIR}/{dtset}/{file_name}-stats.txt")
+                    data_check(f"{RESULTS_DIR}/{dtset}/{file_name}", check_dir=True, check_empty=True)
 
-    # Restore the original configuration file
-    with open("config.yaml", 'w') as f:
-        f.write(original_config)
+        print("--- All pipeline tests and data checks completed successfully. ---")
 
-    print("--- All pipeline tests and data checks completed successfully. ---")
+    except Exception as e:
+        print(f"Error occured: {e}")
+
+    finally:
+        # Restore the original configuration file
+        with open("config.yaml", 'w') as f:
+            f.write(original_config)

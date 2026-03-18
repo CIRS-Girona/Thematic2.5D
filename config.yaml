@@ -6,7 +6,7 @@ patch_size: 128                         # Size (in pixels) to which the extracte
 directories:
   input_dir: tests/samples              # Directory containing the input tiled data (images, depths, masks).
   output_dir: tests/output              # Directory to save output intermediate files/results.
-  mask_suffix: "_binary"            # Suffix to append to the base filename to locate the corresponding binary mask for a given image.
+  mask_suffix: ""                       # Suffix to append to the base filename to locate the corresponding binary mask for a given image.
   depth_suffix: ""                      # Suffix to append to the base filename to locate the corresponding depth map for a given image.
 
 create_dataset:
