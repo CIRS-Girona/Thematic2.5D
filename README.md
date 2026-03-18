@@ -26,7 +26,7 @@ The primary objectives of this project are to:
 
 This section outlines the steps required to use this project. Ensure you have the necessary Python environment and dependencies installed.
 
-### 0. Installation and Testing
+### Installation and Testing
 
 This step provides instruction on how to install the project and test the models on the given samples.
 
@@ -49,16 +49,16 @@ Please make sure that the current working directory is the root directory of the
 python tests/test.py
 ```
 
-### 1. Dataset Creation
+### Dataset Organization
 
 This step involves processing the original image/depth/mask data to generate training patches.
 
 **Input Data Format:**
 
-The project expects original data to be organized as images within a directory structure specified by `input_dir` in the `config.yaml` file. The `input_dir` directory is expected to host one or more datasets organized as folders. Within each dataset folder under `input_dir`, the following subdirectories are expected:
+The project expects original data to be organized as images within a directory structure specified by `input_dir` in the `config.yaml` file. The `input_dir` directory is expected to host one or more datasets organized as folders. Within each dataset folder under `input_dir`, the following subdirectories are expected organized in the same manner as the example provided:
 
 * `images`: Contains original 2D imagery.
-* `depths`: Contains corresponding depth maps, formatted as 1-channel, 16-bit PNGs.
+* `depthmaps`: Contains corresponding depth maps, formatted as 1-channel, 16-bit PNGs.
 * `masks`: Contains corresponding masks indicating the location of target objects, formatted as 1-channel, 8-bit PNGs.
 
 ***Example:***
@@ -66,87 +66,43 @@ The project expects original data to be organized as images within a directory s
 ```
 input_dir/
 └── dataset_1/
-    ├── images/
-    │   ├── img_01.jpg
-    │   ├── img_02.jpg
+    ├── plot1/
+    │   ├── GoPro/
+    │   │   ├── images/
+    │   │   │   ├── img_01.jpg
+    │   │   │   └── ...
+    │   │   ├── depthmaps/
+    │   │   │   ├── img_01.png
+    │   │   │   └── ...
+    │   │   └── masks/
+    │   │       ├── img_01.png
+    │   │       └── ...
+    │   ├── 24mm/
+    │   │   ├── images/
+    │   │   ├── depthmaps/
+    │   │   └── masks/
+    │   └── 35mm/
+    │       └── ...
+    ├── plot2/
     │   └── ...
-    ├── depths/
-    │   ├── img_01.png
-    │   ├── img_02.png
-    │   └── ...
-    └── masks/
-        ├── img_01.png
-        ├── img_02.png
+    └── plot3/
         └── ...
 └── dataset_2/
-    ├── images/
+    ├── plot1/
     │   └── ...
-    ├── depths/
-    │   └── ...
-    └── masks/
-        └── ...
-└── ...
+    └── ...
 ```
 
 ***Metric Pipeline Usage:***
 
-With regards to the usage of the metric pipeline, two additional files need to be present in the dataset folder undet the `input_dir` directory:
-
-* `info.yaml`: Contains the *Camera Type* and the *Visibility* of the dataset.
+With regards to the usage of the metric pipeline, the following file needs to be present in the dataset folder under each camera directory (i.e. GoPro, 24mm, 35mm):
 * `cams.xml`: Contains the intrinsics information of the camera in the *Agisoft Metashape* format.
 
-Please note that these two files are only needed if the `compute_metrics` option is enabled. If not, they are completely optional and will not be used by the other components. For the format of the above two files, an example was provided in the `tests` directory
+Please note that the intrinsics information is only needed if the `compute_metrics` option is enabled. If not, the information is completely optional and will not be used by the other components. For the format of the above file, an example was provided in the `tests` directory
 
 **File Naming Convention:**
 
-Data files within each subdirectory should have the same exact name - excluding the extension - to allow for data matching across different modalities.
-
-**Output:**
-
-Processed image patches (both optical and depth representations) will be saved in the `dataset_dir` under subfolders labeled 'background' and the different class names present in the mask.
-
-### 2. Model Training
-
-This step focuses on extracting features from the generated dataset patches and training an SVM classification model.
-
-**Input:**
-
-The training process utilizes the dataset created in the previous step, located in the `dataset_dir`. Optionally, if `use_saved_features` is set to `true` in the `config.yaml`, pre-extracted features from the `features_dir` will be loaded.
-
-**Output:**
-
-* Extracted features (for 2D, 3D, or 2.5D data) will be saved in the `features_dir`.
-* The trained SVM model will be saved as a file in the `models_dir`.
-* A classification report summarizing the model's performance will be saved in the `results_dir` along with the confusion matrix.
-
-### 3. Inference
-
-This step involves using a trained model to detect objects in a new, unseen image.
-
-**Input:**
-
-The inference process requires the following inputs, specified in the `config.yaml` file under the `run_inference` section:
-
-* `image_path`: The path to the images folder.
-* `depth_path`: The path to the corresponding depth maps folder.
-
-**Output:**
-
-A folder will be created for each trained model inside of `results_dir` where the inference image along with the generated mask will be saved.
-
-### 4. Evaluate Results
-
-This step calculates and saves the mean Intersection over Union (mIoU) for each inferred image, providing a quantitative measure of each model's performance.
-
-**Input:**
-
-The evaluation process requires the following inputs, specified in the `config.yaml` file under the `evaluate_results` section:
-
-* `mask_path`: The path to the directory containing the ground truth masks.
-
-**Output:**
-
-The evaluation results will be saved in a file named `meanIoU.txt` located within the directory of each model under `results_dir`. This file will contain the mIoU score for each individual image as well as the average mIoU across all images.
+Data files within each subdirectory should have the same exact name - excluding the extension - to allow for data matching across different modalities. The option for providing a suffix for both the depth and masks files is provided in the config file.
 
 ## Results
 
