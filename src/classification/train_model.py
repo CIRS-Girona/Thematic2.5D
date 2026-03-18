@@ -1,11 +1,7 @@
 from sklearn.metrics import classification_report, confusion_matrix, ConfusionMatrixDisplay
 from sklearn.model_selection import train_test_split
 
-import matplotlib
-matplotlib.use('Agg')
-
 import numpy as np
-import matplotlib.pyplot as plt
 from typing import Literal
 import time, os, logging
 
@@ -14,7 +10,7 @@ from . import SVMModel, load_features, save_features
 logger = logging.getLogger(__name__)
 
 
-def train_model(dataset_dir: str, features_dir: str, models_dir: str, results_dir: str, binary_mode: bool = False, test_size: float = 0.1, n_components: int = 100, dimension: Literal['2', '25', '3'] = '25', subset_size: int = 0) -> None:
+def train_model(dataset_dir: str, features_dir: str, models_dir: str, binary_mode: bool = False, test_size: float = 0.1, n_components: int = 100, dimension: Literal['2', '25', '3'] = '25', subset_size: int = 0) -> None:
     """
     Trains an SVM model using extracted features and evaluates its performance.
 
@@ -59,22 +55,5 @@ def train_model(dataset_dir: str, features_dir: str, models_dir: str, results_di
 
     y_pred = model.predict(X_test)
 
-    if binary_mode:
-        datafile_name = f"{model.name}{dimension}_binary"
-    else:
-        datafile_name = f"{model.name}{dimension}"
-
     report = classification_report(y_test, y_pred, zero_division=0)
     logger.info("\n" + report)
-
-    os.makedirs(results_dir, exist_ok=True)
-    with open(f"{results_dir}/{datafile_name}.txt", 'w') as f:
-        print(report, file=f) # Write to file
-
-    cm = confusion_matrix(y_test, y_pred, normalize='true')
-    cmd = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=model.model.classes_)
-
-    cmd.plot()
-    plt.tight_layout()
-    plt.savefig(f"{results_dir}/{datafile_name}.jpg")
-    plt.close('all')

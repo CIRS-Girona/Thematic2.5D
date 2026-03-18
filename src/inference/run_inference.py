@@ -1,6 +1,7 @@
 import numpy as np
 import cv2
 import os, time, logging
+from typing import Dict, Tuple
 
 from ..features import extract_features
 from ..utils import superpixel_segmentation, apply_mask, get_window_bounds
@@ -12,6 +13,7 @@ logger = logging.getLogger(__name__)
 def run_inference(
         image_path: str,
         depth_path: str,
+        mask_path: str | None,
         models_dir: str,
         results_dir: str,
         max_uxo_code: int,
@@ -20,8 +22,9 @@ def run_inference(
         window_size: int = 400,
         patch_size: int = 128,
         subdivide_axis: int = 3,
-        threshold: int = 3
-    ) -> None:
+        threshold: int = 3,
+        uxo_threshold: float = 0.4,
+    ) -> Dict[str, Tuple[np.ndarray, np.ndarray]]:
     """
     Runs the inference process using trained SVM models on an image and its corresponding depth map.
 
@@ -33,6 +36,7 @@ def run_inference(
     Args:
         image_path: Path to the input image file.
         depth_path: Path to the input depth map file.
+        mask_path: Path to the ground truth mask file (optional, only needed for statistics generation).
         models_dir: Directory containing the trained SVM models.
         results_dir: Directory to save the inference results (masks and highlighted images).
         max_uxo_code: The maximum integer code representing UXO classes in multi-class models.
@@ -42,10 +46,18 @@ def run_inference(
         patch_size: Desired size of the extracted and resized image/depth patches.
         subdivide_axis: Number of subdivisions along each axis within the window for patch extraction.
         threshold: Minimum number of patch predictions required to consider a superpixel region as positive.
+        uxo_threshold: Minimum proportion of UXO pixels in a patch to label it as 'uxo' for ground truth comparison.
+
+    Returns:
+        A dictionary mapping model names to tuples of (y_true, y_pred) arrays for performance statistics generation. If no ground truth mask is provided, y_true will be None.
     """
     img = cv2.imread(image_path)
     depth = cv2.imread(depth_path, cv2.IMREAD_UNCHANGED)
     img_label = os.path.splitext(os.path.basename(image_path))[0]
+
+    mask = None
+    if mask_path is not None and os.path.exists(mask_path):
+        mask = cv2.imread(mask_path, cv2.IMREAD_UNCHANGED)
 
     h, w = img.shape[:2]
     window_radius = window_size // 2
@@ -110,22 +122,40 @@ def run_inference(
         ) for i in range(num_patches)
     ]
 
+    y_true_binary = []
+    y_true_multi = []
+    if mask is not None:
+        for i in range(num_patches):
+            m_patch = mask[crop_y_s[i]:crop_y_e[i], crop_x_s[i]:crop_x_e[i]]
+
+            is_uxo = (m_patch[:, :, 0] == 2)
+            if np.sum(is_uxo) / is_uxo.size >= uxo_threshold:
+                y_true_binary.append('uxo')
+                y_true_multi.append(str(np.unique(m_patch[is_uxo][:, 0])[0]))
+            else:
+                y_true_binary.append('background')
+                y_true_multi.append('background')
+
+        y_true_binary = np.array(y_true_binary)
+        y_true_multi = np.array(y_true_multi)
+
     logger.info(f"Patch extraction and resizing for {num_patches} patches took {time.perf_counter() - s:.2f} seconds.")
 
-    features_2d, features_3d = extract_features(batch_imgs, batch_depths)
-    model_files = os.listdir(models_dir)
-    
     # Pre-calculate feature concatenations to avoid doing it inside the loop if possible
+    features_2d, features_3d = extract_features(batch_imgs, batch_depths)
     feats_combined = np.concatenate((features_2d, features_3d), axis=1)
-    for model_name in model_files:
+
+    pred_output = {}
+    for model_name in os.listdir(models_dir):
         # Load Model
         model = SVMModel(model_dir=models_dir)
         model.load_model(model_name) # Assuming this is fast enough or unavoidable
 
+        model_name = os.path.splitext(model_name)[0]
         dimension = model.label
         binary_mode = model.is_binary()
 
-        inference_dir = os.path.join(results_dir, os.path.splitext(model_name)[0])
+        inference_dir = os.path.join(results_dir, model_name)
         os.makedirs(inference_dir, exist_ok=True)
 
         # Select Features
@@ -137,6 +167,11 @@ def run_inference(
             X = feats_combined
 
         y_pred = model.predict(X)
+
+        # Generate Performance Stats if ground truth is available
+        if mask is not None:
+            y_true = y_true_binary if binary_mode else y_true_multi
+            pred_output[model_name] = (y_true, y_pred)
 
         # We need to find which superpixel labels (patch_labels) have enough votes.
         uxo_mask = np.zeros_like(labels, dtype=np.float32)
@@ -187,3 +222,5 @@ def run_inference(
             inference_img = apply_mask(img, uxo_mask, mode='highlight')
 
         cv2.imwrite(f"{inference_dir}/{img_label}.jpg", inference_img)
+
+    return pred_output

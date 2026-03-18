@@ -91,20 +91,18 @@ if __name__ == "__main__":
     data_check(RESULTS_DIR, check_dir=True)                     # Results dir might be empty/have logs
 
     # Verify that performance metrics and per-sample results were generated
-    for model in MODELS:
-        for binary in (True, False):
-            file_name = f"SVM{model}_binary" if binary else f"SVM{model}"
+    for dtset in SAMPLES:
+        data_check(f"{RESULTS_DIR}/{dtset}", check_dir=True, check_empty=True)
+        data_check(f"{RESULTS_DIR}/{dtset}/metrics.csv")
 
-            data_check(f"{RESULTS_DIR}/{file_name}.jpg")
-            data_check(f"{RESULTS_DIR}/{file_name}.txt")
+        for model in MODELS:
+            for binary in (True, False):
+                file_name = f"SVM{model}_binary" if binary else f"SVM{model}"
 
-            for dtset in SAMPLES:
-                data_check(f"{RESULTS_DIR}/{dtset}", check_dir=True, check_empty=True)
+                data_check(f"{RESULTS_DIR}/{dtset}/{file_name}-cm.txt")
                 data_check(f"{RESULTS_DIR}/{dtset}/{file_name}-mIoU.txt")
+                data_check(f"{RESULTS_DIR}/{dtset}/{file_name}-stats.txt")
                 data_check(f"{RESULTS_DIR}/{dtset}/{file_name}", check_dir=True, check_empty=True)
-
-    for sample in SAMPLES:
-        data_check(f"{INPUT_DIR}/{sample}/metrics.csv")
 
     # Restore the original configuration file
     with open("config.yaml", 'w') as f:

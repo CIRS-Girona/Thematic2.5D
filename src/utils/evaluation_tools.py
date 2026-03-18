@@ -1,6 +1,7 @@
+from sklearn.metrics import classification_report, confusion_matrix
 import numpy as np
 from scipy import ndimage
-import cv2
+import cv2, os
 
 from typing import Literal, Tuple
 
@@ -10,7 +11,6 @@ else:
     from fast_slic import Slic
 
 COLORMAP: np.ndarray = cv2.applyColorMap(np.arange(0, 256).astype(np.uint8), cv2.COLORMAP_RAINBOW)
-
 
 def superpixel_segmentation(image: np.ndarray, num_components=600, compactness=10) -> Tuple[np.ndarray, np.ndarray]:
     """
@@ -145,3 +145,26 @@ def get_window_bounds(centers: np.ndarray, radius: int, max_val: int) -> Tuple[n
     starts[overflow_mask] = limit - 1 - (2 * radius)
     
     return starts.astype(int), ends.astype(int)
+
+
+def performance_stats(y_true: np.array, y_pred: np.array, results_dir: str, filename: str, display_labels=None) -> None:
+    report = classification_report(y_true, y_pred, zero_division=0)
+
+    os.makedirs(results_dir, exist_ok=True)
+    with open(f"{results_dir}/{filename}-stats.txt", 'w') as f:
+        print(report, file=f)
+
+    cm = confusion_matrix(y_true, y_pred, normalize='true', labels=display_labels)
+    if display_labels is None:
+        labels = [str(l) for l in np.unique(np.concatenate((y_true, y_pred)))]
+    else:
+        labels = [str(l) for l in display_labels]
+
+    col_width = max([len(l) for l in labels] + [5]) + 2
+    with open(f"{results_dir}/{filename}-cm.txt", 'w') as f:
+        header = " " * col_width + "".join([f"{l:>{col_width}}" for l in labels])
+        f.write(header + "\n")
+
+        for i, row in enumerate(cm):
+            row_str = f"{labels[i]:>{col_width}}" + "".join([f"{val:>{col_width}.2f}" for val in row])
+            f.write(row_str + "\n")

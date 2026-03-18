@@ -93,6 +93,17 @@ class ClassificationModel:
 
         self.model = Pipeline(pipeline)
 
+    def get_class_labels(self) -> np.ndarray:
+        """
+        Retrieves the class labels from the trained model.
+
+        Returns:
+            np.ndarray: Array of class labels if available, otherwise an empty array.
+        """
+        if hasattr(self.model, 'classes_'):
+            return self.model.classes_
+
+        return np.array([])
 
     def is_binary(self) -> bool:
         """
@@ -101,10 +112,7 @@ class ClassificationModel:
         Returns:
             bool: True if the model is binary, False otherwise.
         """
-        if hasattr(self.model.steps[-1][1], 'classes_'):
-            return len(self.model.steps[-1][1].classes_) == 2
-        return False
-
+        return self.get_class_labels().size == 2
 
     def train(self, X_train: np.ndarray, y_train: np.ndarray) -> np.ndarray:
         """
@@ -120,7 +128,6 @@ class ClassificationModel:
         """
         return self.model.fit_transform(X_train, y_train)
 
-
     def predict(self, X: np.ndarray) -> np.ndarray:
         """
         Makes predictions on new data using the trained pipeline.
@@ -132,7 +139,6 @@ class ClassificationModel:
             np.ndarray: Predicted labels for the input features.
         """
         return self.model.transform(X)
-
 
     def save_model(self) -> None:
         """
@@ -152,7 +158,6 @@ class ClassificationModel:
                 'label': self.label,
                 'model': self.model,
             }, f)
-
 
     def load_model(self, filename: str) -> None:
         """

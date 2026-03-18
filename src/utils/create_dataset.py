@@ -135,7 +135,7 @@ def create_dataset(
     mask_path: str,
     dataset_dir: str,
     prefix: str = '',
-    bg_per_img: int = 20_000,
+    bg_ratio: float = 2.0,
     uxo_sample_rate: float = 0.01,
     uxo_threshold: float = 0.4,
     invalid_threshold: float = 0.01,
@@ -154,7 +154,7 @@ def create_dataset(
         mask_path (str): Path to the input segmentation mask.
         dataset_dir (str): The base directory where the created dataset will be saved.
         prefix (str): A prefix to add to the filenames within the dataset directory.
-        bg_per_img (int): The number of background patches to sample per image.
+        bg_ratio (float): The ratio of background patches to UXO patches per image.
         thread_count (int): The maximum number of worker threads to use for processing.
         uxo_sample_rate (float): The proportion of UXO pixels to sample as patch centers
                                  from the total number of UXO pixels in an image.
@@ -202,6 +202,7 @@ def create_dataset(
             )
 
     # Generate 20% more than needed to account for invalid hits
+    bg_per_img = int(total_uxos * bg_ratio)
     attempt_count = int(bg_per_img * 1.2) 
     rand_y = np.random.randint(0, h, attempt_count)
     rand_x = np.random.randint(0, w, attempt_count)

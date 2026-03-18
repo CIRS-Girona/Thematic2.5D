@@ -4,7 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 import numpy as np
 
 from src.metrics import calculate_metrics
-from src.utils import create_dataset, camera_parser
+from src.utils import create_dataset, camera_parser, performance_stats
 from src.classification import train_model
 from src.inference import run_inference, compute_miou
 
@@ -18,12 +18,16 @@ if __name__ == "__main__":
 
     # Set directories from config
     input_dir = config['directories']['input_dir']
-    inference_dir = config['directories']['inference_dir']
-    dataset_dir = config['directories']['dataset_dir']
-    results_dir = config['directories']['results_dir']
-    models_dir = config['directories']['models_dir']
-    features_dir = config['directories']['features_dir']
-    logging_dir = config['directories']['logging_dir']
+    output_dir = config['directories']['output_dir']
+
+    dataset_dir = f"{output_dir}/dataset"
+    results_dir = f"{output_dir}/results"
+    models_dir = f"{output_dir}/models"
+    features_dir = f"{output_dir}/features"
+    logging_dir = f"{output_dir}/logs"
+
+    mask_suffix = config['directories']['mask_suffix']
+    depth_suffix = config['directories']['depth_suffix']
 
     thread_count = config['thread_count']
 
@@ -51,22 +55,36 @@ if __name__ == "__main__":
     logging.basicConfig(
         format='%(asctime)s - %(name)s - [%(levelname)s]: %(message)s',
         datefmt='%m/%d/%Y %I:%M:%S %p',
-        filename=f"{config['directories']['logging_dir']}/{time.time()}.log",
+        filename=f"{logging_dir}/{time.time()}.log",
         level=logging.INFO
     )
+
+    dtsets = []
+    for day in os.listdir(input_dir):
+            if not os.path.isdir(f"{input_dir}/{day}"):
+                continue
+
+            for plot in os.listdir(f"{input_dir}/{day}"):
+                if not os.path.isdir(f"{input_dir}/{day}/{plot}"):
+                    continue
+
+                for camera in os.listdir(f"{input_dir}/{day}/{plot}"):
+                    if not os.path.isdir(f"{input_dir}/{day}/{plot}/{camera}"):
+                        continue
+
+                    dtsets.append((day, plot, camera))
 
     # Process according to config modes
     if config['create_dataset']['enabled']:
         print("Creating dataset...")
 
         args = []
-        for dtset in os.listdir(input_dir):
-            if not os.path.isdir(f"{input_dir}/{dtset}"):
-                continue
+        for day, plot, camera in dtsets:
+            dtset = f"{day}_{plot}_{camera}"
 
-            image_path = f"{input_dir}/{dtset}/images/"
-            depth_path = f"{input_dir}/{dtset}/depths/"
-            mask_path = f"{input_dir}/{dtset}/masks/"
+            image_path = f"{input_dir}/{day}/{plot}/{camera}/images/"
+            depth_path = f"{input_dir}/{day}/{plot}/{camera}/depths/"
+            mask_path = f"{input_dir}/{day}/{plot}/{camera}/masks/"
 
             for img in os.listdir(depth_path):
                 label = '.'.join(img.split('.')[:-1])
@@ -76,11 +94,11 @@ if __name__ == "__main__":
                 
                 args.append((
                     f"{image_path}/{label}.jpg",
-                    f"{depth_path}/{label}.png",
-                    f"{mask_path}/{label}.png",
+                    f"{depth_path}/{label}{depth_suffix}.png",
+                    f"{mask_path}/{label}{mask_suffix}.png",
                     dataset_dir,
                     dtset,
-                    config['create_dataset']['bg_per_img'],
+                    config['create_dataset']['bg_ratio'],
                     config['create_dataset']['uxo_sample_rate'],
                     config['create_dataset']['uxo_threshold'],
                     config['create_dataset']['invalid_threshold'],
@@ -104,7 +122,6 @@ if __name__ == "__main__":
                     dataset_dir=dataset_dir,
                     features_dir=features_dir,
                     models_dir=models_dir,
-                    results_dir=results_dir,
                     binary_mode=binary,
                     test_size=config['train_models']['test_size'],
                     n_components=config['train_models']['n_components'],
@@ -115,16 +132,17 @@ if __name__ == "__main__":
     if config['run_inference']['enabled']:
         print("Running inference...")
 
-        args = []
-        for dtset in os.listdir(inference_dir):
-            if not os.path.isdir(f"{inference_dir}/{dtset}"):
-                continue
+        args, data = [], {}
+        for day, plot, camera in dtsets:
+            dtset = f"{day}_{plot}_{camera}"
+
+            image_path = f"{input_dir}/{day}/{plot}/{camera}/images/"
+            depth_path = f"{input_dir}/{day}/{plot}/{camera}/depths/"
+            mask_path = f"{input_dir}/{day}/{plot}/{camera}/masks/"
 
             os.makedirs(f"{results_dir}/{dtset}", exist_ok=True)
 
-            image_path = f"{inference_dir}/{dtset}/images"
-            depth_path = f"{inference_dir}/{dtset}/depths"
-
+            data[dtset] = []
             for img in os.listdir(depth_path):
                 label = '.'.join(img.split('.')[:-1])
 
@@ -132,8 +150,10 @@ if __name__ == "__main__":
                     raise FileNotFoundError(f"Corresponding image {label}.jpg couldn't be found in {image_path}.")
 
                 args.append((
+                    dtset,
                     f"{image_path}/{label}.jpg",
-                    f"{depth_path}/{label}.png",
+                    f"{depth_path}/{label}{depth_suffix}.png",
+                    f"{mask_path}/{label}{mask_suffix}.png",
                     models_dir,
                     f"{results_dir}/{dtset}",
                     config['max_uxo_code'],
@@ -143,45 +163,48 @@ if __name__ == "__main__":
                     config['patch_size'],
                     config['run_inference']['subdivide_axis'],
                     config['run_inference']['threshold'],
+                    config['create_dataset']['uxo_threshold']
                 ))
 
         with ThreadPoolExecutor(max_workers=thread_count) as exe:
             list(tqdm(
-                exe.map(lambda a: run_inference(*a), args),
+                exe.map(lambda a: data[a[0]].append(run_inference(*(a[1:]))), args),
                 total=len(args)
             ))
+
+        for dtset in data.keys():
+            for model in data[dtset][0].keys():  # Assuming all runs_inference return the same model keys
+                y_true = np.concatenate([d[model][0] for d in data[dtset] if d[model][0] is not None])
+                y_pred = np.concatenate([d[model][1] for d in data[dtset] if d[model][1] is not None])
+                print(np.unique(y_true))
+                print(np.unique(y_pred))
+
+                performance_stats(y_true, y_pred, f"{results_dir}/{dtset}", model)
 
     if config['evaluate_results']['compute_metrics']:
         print("Computing classification metrics...")
 
         args = []
-        for dtset in os.listdir(input_dir):
-            camera_file = f"{input_dir}/{dtset}/cams.xml"
-            info_file = f"{input_dir}/{dtset}/info.yaml"
-            metric_file = f"{input_dir}/{dtset}/metrics.csv"
+        for day, plot, camera in dtsets:
+            dtset = f"{day}_{plot}_{camera}"
 
-            img_path = f"{input_dir}/{dtset}/images/"
-            mask_path = f"{input_dir}/{dtset}/masks/"
-            depth_path = f"{input_dir}/{dtset}/depths/"
+            image_path = f"{input_dir}/{day}/{plot}/{camera}/images/"
+            depth_path = f"{input_dir}/{day}/{plot}/{camera}/depths/"
+            mask_path = f"{input_dir}/{day}/{plot}/{camera}/masks/"
 
-            labels = ['.'.join(label.split('.')[:-1]) for label in os.listdir(img_path)]
+            camera_file = f"{input_dir}/{day}/{plot}/{camera}/cams.xml"
+            metric_file = f"{results_dir}/{day}/{plot}/{camera}/metrics.csv"
+
+            labels = ['.'.join(label.split('.')[:-1]) for label in os.listdir(image_path)]
 
             sensor = camera_parser(camera_file)[0]
-
-            with open(info_file, 'r') as f:
-                info = yaml.safe_load(f)
-
-                camera_type = info["camera_type"]
-                visibility = info["visibility"]
 
             args.append((
                 sensor,
                 models_dir,
-                [f"{img_path}/{label}.jpg" for label in labels],
-                [f"{mask_path}/{label}.png" for label in labels],
-                [f"{depth_path}/{label}.png" for label in labels],
-                camera_type,
-                visibility,
+                [f"{image_path}/{label}.jpg" for label in labels],
+                [f"{mask_path}/{label}{mask_suffix}.png" for label in labels],
+                [f"{depth_path}/{label}{depth_suffix}.png" for label in labels],
                 metric_file,
                 config['window_size'],
                 config['patch_size'],
@@ -199,15 +222,17 @@ if __name__ == "__main__":
         miou_scores = {}  # { dtset: {dir: { label: miou_score } } }
 
         args = []
-        for dtset in os.listdir(results_dir):
+        for day, plot, camera in dtsets:
+            dtset = f"{day}_{plot}_{camera}"
             if not os.path.isdir(f"{results_dir}/{dtset}"):
                     continue
 
+            mask_path = f"{input_dir}/{day}/{plot}/{camera}/masks/"
             for curr_dir in os.listdir(f"{results_dir}/{dtset}"):
                 if not os.path.isdir(f"{results_dir}/{dtset}/{curr_dir}"):
                     continue
-                elif not os.path.isdir(f"{inference_dir}/{dtset}/masks"):
-                    raise FileNotFoundError(f"Ground truth masks directory not found: {inference_dir}/{dtset}/masks")
+                elif not os.path.isdir(mask_path):
+                    raise FileNotFoundError(f"Ground truth masks directory not found: {mask_path}")
 
                 if dtset not in miou_scores:
                     miou_scores[dtset] = {}
@@ -215,7 +240,7 @@ if __name__ == "__main__":
                 if curr_dir not in miou_scores[dtset]:
                     miou_scores[dtset][curr_dir] = {}
 
-                for mask in os.listdir(f"{inference_dir}/{dtset}/masks"):
+                for mask in os.listdir(mask_path):
                     label = "".join(mask.split('.')[:-1])
 
                     if not os.path.exists(f"{results_dir}/{dtset}/{curr_dir}/{label}_mask.png"):
@@ -227,7 +252,7 @@ if __name__ == "__main__":
                         curr_dir,
                         label,
                         (
-                            f"{inference_dir}/{dtset}/masks/{mask}",
+                            f"{mask_path}/{label}{mask_suffix}.png",
                             f"{results_dir}/{dtset}/{curr_dir}/{label}_mask.png",
                             is_binary
                         )

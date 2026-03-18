@@ -5,18 +5,15 @@ patch_size: 128                         # Size (in pixels) to which the extracte
 
 directories:
   input_dir: tests/samples              # Directory containing the input tiled data (images, depths, masks).
-  inference_dir: tests/samples          # Directory containing the input tiled data for inference (images, depths).
-  dataset_dir: tests/data/dataset       # Directory where the processed dataset patches will be saved.
-  features_dir: tests/data/features     # Directory to save extracted features.
-  models_dir: tests/data/models         # Directory to save trained model files.
-  results_dir: tests/data/results       # Directory to save classification reports and inference output images.
-  logging_dir: tests/data/logs          # Directory to save logging information.
+  output_dir: tests/output              # Directory to save output intermediate files/results.
+  mask_suffix: "_binary"            # Suffix to append to the base filename to locate the corresponding binary mask for a given image.
+  depth_suffix: ""                      # Suffix to append to the base filename to locate the corresponding depth map for a given image.
 
 create_dataset:
   enabled: true                         # Set to `true` to enable dataset creation.
-  bg_per_img: 100                       # Maximum number of background patches to extract per input image.
+  bg_ratio: 2.0                         # Ratio of background (non-UXO) samples to UXO samples in the training dataset.
   uxo_sample_rate: 0.001                # Fraction of UXO pixels to sample as centers for potential UXO patches.
-  uxo_threshold: 0.4                    # Minimum fraction of UXO pixels required within a window for it to be labeled as a UXO patch.
+  uxo_threshold: 0.3                    # Minimum fraction of UXO pixels required within a window for it to be labeled as a UXO patch.
   invalid_threshold: 0.01               # Maximum fraction of invalid pixels (e.g., masked out areas) in a patch; patches exceeding this are skipped.
   angles: [0, 90, 180, 270]             # Angles (in degrees) to rotate UXO patches for data augmentation.
 
