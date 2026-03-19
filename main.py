@@ -176,8 +176,6 @@ if __name__ == "__main__":
             for model in data[dtset][0].keys():  # Assuming all runs_inference return the same model keys
                 y_true = np.concatenate([d[model][0] for d in data[dtset] if d[model][0] is not None])
                 y_pred = np.concatenate([d[model][1] for d in data[dtset] if d[model][1] is not None])
-                print(np.unique(y_true))
-                print(np.unique(y_pred))
 
                 performance_stats(y_true, y_pred, f"{results_dir}/{dtset}", model)
 
