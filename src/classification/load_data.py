@@ -59,8 +59,15 @@ def load_data(images_dir: str, depth_dir: str, subset: int = 0) -> Tuple[np.ndar
             image_names_subset = image_names
 
         for image_name in image_names_subset:
-            img = cv2.imread(os.path.join(class_image_dir, image_name))
-            depth = cv2.imread(os.path.join(class_depth_dir, image_name), cv2.IMREAD_UNCHANGED).astype(np.float32)
+            img_path = os.path.join(class_image_dir, image_name)
+            depth_path = os.path.join(class_depth_dir, image_name)
+
+            if not os.path.exists(img_path) or not os.path.exists(depth_path):
+                print(f"Image or Depth Patch is missing: {image_name}")
+                continue
+            
+            img = cv2.imread(img_path)
+            depth = cv2.imread(depth_path, cv2.IMREAD_UNCHANGED).astype(np.float32)
 
             if img is not None and depth is not None: # Ensure image was loaded successfully
                 images_list.append(img)
