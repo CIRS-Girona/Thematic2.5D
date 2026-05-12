@@ -14,10 +14,8 @@ logger = logging.getLogger(__name__)
 FIELDS: Tuple[str] = [
     "label",
     "image",
-    "camera",
     "res. width",
     "res. height",
-    "visibility",
     "centroid u",
     "centroid v",
     "med. depth (mm)",
